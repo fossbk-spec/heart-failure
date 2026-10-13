@@ -186,3 +186,16 @@ class TestFlagAllBaseline:
         y = rng.binomial(1, 0.32, 300)
         m = evaluation.compute_metrics(y, np.ones(300), threshold=0.5, beta=2)
         assert m["f2_flag_all"] == pytest.approx(m["f2"])
+
+
+class TestMcc:
+    def test_mcc_matches_hand_calculation(self):
+        # TP=2, FN=1, FP=1, TN=4 -> MCC = (8 - 1) / sqrt(3 * 3 * 5 * 5) = 7 / 15.
+        y = np.array([1, 1, 1, 0, 0, 0, 0, 0])
+        proba = np.array([0.9, 0.8, 0.1, 0.7, 0.2, 0.2, 0.1, 0.1])
+        m = evaluation.compute_metrics(y, proba, threshold=0.5)
+        assert m["mcc"] == pytest.approx(7 / 15)
+
+    def test_mcc_is_zero_for_constant_predictor(self, imbalanced_labels):
+        m = evaluation.compute_metrics(imbalanced_labels, np.zeros(100), threshold=0.5)
+        assert m["mcc"] == 0.0

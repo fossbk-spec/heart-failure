@@ -282,3 +282,30 @@ class TestIdentifierLeakage:
         y = synthetic_df[config.TARGET_COLUMN].astype(int)
         auc_time = roc_auc_score(y, -synthetic_df["time"])
         assert auc_time > 0.75
+
+
+class TestRobustScalerAudit:
+    def test_holdout_robust_scaler_refit_is_detected(self, synthetic_df, monkeypatch):
+        """`center_` (RobustScaler) must be part of the audited fitted state."""
+        from sklearn.preprocessing import RobustScaler
+
+        split = patient_level_split(synthetic_df)
+        X_train, y_train = split_features_target(split.train)
+        X_test, _ = split_features_target(split.test)
+        pipeline = preprocessing.make_full_pipeline(
+            get_model("logistic_regression"), use_smote=False
+        )
+        pipeline.set_params(preprocessor__num__scaler=RobustScaler())
+        pipeline.fit(X_train, y_train)
+        scaler = pipeline.named_steps["preprocessor"].named_transformers_["num"].named_steps[
+            "scaler"
+        ]
+        original_transform = scaler.transform
+
+        def refit_on_transform(X):
+            scaler.fit(X)
+            return original_transform(X)
+
+        monkeypatch.setattr(scaler, "transform", refit_on_transform)
+        with pytest.raises(DataLeakageError, match="DATA LEAKAGE"):
+            preprocessing.assert_no_fit_on_holdout(pipeline, X_test)

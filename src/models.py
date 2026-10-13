@@ -158,6 +158,17 @@ def build_stacking_ensemble(
     )
 
 
+# Tree ensembles split on thresholds, so feature scaling changes nothing.
+UNSCALED_MODELS = frozenset(
+    {"random_forest", "extra_trees", "gradient_boosting", "decision_tree", "xgboost"}
+)
+
+
+def needs_scaling(name: str) -> bool:
+    """Whether the model's preprocessing should standardize continuous features."""
+    return name.lower().replace("-", "_") not in UNSCALED_MODELS
+
+
 def available_models() -> list[str]:
     """List of models usable in the current environment."""
     names = [

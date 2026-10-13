@@ -73,9 +73,8 @@ def run_experiment(
             )
         else:
             estimator = models.get_model(name, class_weight=class_weight)
-            scale = name not in {"random_forest", "gradient_boosting", "decision_tree", "xgboost"}
             pipeline = preprocessing.make_full_pipeline(
-                estimator, use_smote=use_smote, scale=scale
+                estimator, use_smote=use_smote, scale=models.needs_scaling(name)
             )
 
         pipeline.fit(X_train, y_train)
@@ -169,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     print("\n================ MODEL COMPARISON ON TEST SET ================")
-    cols = ["model", "threshold", "recall", "pr_auc", f"f{args.beta:g}", "precision",
+    cols = ["model", "threshold", "recall", "pr_auc", f"f{args.beta:g}", "mcc", "precision",
             f"f{args.beta:g}_flag_all", "roc_auc", "specificity", "accuracy", "null_accuracy",
             "n_false_negative"]
     print(table[[c for c in cols if c in table.columns]].round(4).to_string(index=False))

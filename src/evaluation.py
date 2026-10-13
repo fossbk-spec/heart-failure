@@ -20,6 +20,7 @@ from sklearn.metrics import (
     brier_score_loss,
     confusion_matrix,
     fbeta_score,
+    matthews_corrcoef,
     precision_recall_curve,
     precision_score,
     recall_score,
@@ -82,6 +83,7 @@ def compute_metrics(
         f"f{beta:g}": fbeta_score(y_true, y_pred, beta=beta, zero_division=0),
         "f1": fbeta_score(y_true, y_pred, beta=1, zero_division=0),
         "precision": precision_score(y_true, y_pred, zero_division=0),
+        "mcc": matthews_corrcoef(y_true, y_pred) if n else 0.0,
         "roc_auc": roc_auc_score(y_true, y_proba) if len(np.unique(y_true)) > 1 else np.nan,
         "specificity": tn / (tn + fp) if (tn + fp) else 0.0,
         "balanced_accuracy": 0.5 * (

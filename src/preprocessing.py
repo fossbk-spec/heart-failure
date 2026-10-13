@@ -348,7 +348,8 @@ def _fitted_state(preprocessor: ColumnTransformer) -> str:
             if fit_X is not None:
                 digest = hashlib.sha256(np.asarray(fit_X).tobytes()).hexdigest()
                 chunks.append(f"{name}.{step_name}._fit_X={fit_X.shape}:{digest}")
-            for attr in ("mean_", "scale_", "var_", "statistics_", "categories_"):
+            for attr in ("mean_", "scale_", "var_", "center_", "lambdas_", "statistics_",
+                         "categories_"):
                 value = getattr(step, attr, None)
                 if value is None:
                     continue
