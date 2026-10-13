@@ -1,0 +1,42 @@
+# --- Data (only the bundled raw CSV is tracked; everything else generated/licensed is not) ---
+data/raw/*
+!data/raw/heart_failure_clinical_records_dataset.csv
+!data/raw/README.md
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/SSoT_pdf_references/*.pdf
+
+# --- Results generated from source code ---
+reports/figures/*.png
+reports/*.csv
+reports/*.json
+reports/*.txt
+reports/eda/
+reports/recall80/
+!reports/README.md
+*.joblib
+*.pkl
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Virtual environment ---
+.venv/
+.venv
+venv/
+env/
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- OS / IDE ---
+.DS_Store
+.vscode/
+.idea/
