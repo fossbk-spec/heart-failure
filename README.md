@@ -134,9 +134,12 @@ Forest on all 11 features (CV ROC-AUC 0.75, PR-AUC 0.61); the MLP is weaker
 
 ## External validation on PhysioNet Zigong
 Zigong (Zhang et al. 2021, 2,008 admissions, China 2016–2019) is
-restricted-access (PhysioNet Restricted Health Data License 1.5.0): place
-`dat.csv` in `data/raw/zigong/` (git-ignored, never committed). CI runs the
-same code on synthetic data only.
+restricted-access (PhysioNet Restricted Health Data License 1.5.0). On each
+machine, download it with your own credentialed account:
+`python scripts/download_zigong.py --user <physionet-username>` (password is
+prompted, never stored), which places `dat.csv` in `data/raw/zigong/`
+(git-ignored, never committed) and prints its sha256 so the team can check
+that every machine uses the same file. CI runs the same code on synthetic data only.
 
 `src/harmonization.py` maps both cohorts onto 9 shared features (age in
 Zigong's decade bands, sex, diabetes, anaemia from hemoglobin, LVEF, serum
