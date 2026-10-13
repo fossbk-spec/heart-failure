@@ -51,25 +51,27 @@
 ## 2. LỘ TRÌNH TRIỂN KHAI
 
 ### GIAI ĐOẠN 0: SỬA NỀN (không cần Zigong)
-- [ ] Thêm `mcc` (Matthews Correlation Coefficient) vào `src/evaluation.compute_metrics`; in trong bảng của `src/train.py`.
-- [ ] `_fitted_state` (`src/preprocessing.py`) theo dõi thêm `center_` (RobustScaler) và `lambdas_` (PowerTransformer).
-- [ ] Gom quy tắc "mô hình cây không cần scale" về một chỗ: `models.needs_scaling(name)`; `train.py` dùng hàm này.
-- [ ] Test: MCC tính tay; phát hiện fit lại RobustScaler trên hold-out.
+- [x] Thêm `mcc` (Matthews Correlation Coefficient) vào `src/evaluation.compute_metrics`; in trong bảng của `src/train.py`.
+- [x] `_fitted_state` (`src/preprocessing.py`) theo dõi thêm `center_` (RobustScaler) và `lambdas_` (PowerTransformer).
+- [x] Gom quy tắc "mô hình cây không cần scale" về một chỗ: `models.needs_scaling(name)`; `train.py` dùng hàm này.
+- [x] Test: MCC tính tay; phát hiện fit lại RobustScaler trên hold-out.
 
 ### GIAI ĐOẠN 1: MỞ RỘNG MÔ HÌNH (không cần Zigong)
-- [ ] `extra_trees`: `ExtraTreesClassifier(n_estimators=400, min_samples_leaf=3, class_weight=..., n_jobs=-1)` — cùng mặc định với Random Forest; không scale.
-- [ ] `mlp`: `MLPClassifier(hidden_layer_sizes=(16,), alpha=1e-2, max_iter=2000)`, không early stopping; có scale. MLP không hỗ trợ `class_weight` → dùng SMOTE.
-- [ ] Thêm cả hai vào `available_models()`; thêm `extra_trees` vào `DEFAULT_MODELS`.
-- [ ] XGBoost: giữ tùy chọn (`requirements.txt` để ở dạng chú thích), không bắt buộc.
-- [ ] Test `tests/test_models.py`: khởi tạo, fit/predict trong pipeline, quy tắc scale, `class_weight`.
+- [x] `extra_trees`: `ExtraTreesClassifier(n_estimators=400, min_samples_leaf=3, class_weight=..., n_jobs=-1)` — cùng mặc định với Random Forest; không scale.
+- [x] `mlp`: `MLPClassifier(hidden_layer_sizes=(16,), alpha=1e-2, solver="lbfgs", max_iter=2000)`, không early stopping; có scale (`adam` không hội tụ trong 2000 vòng). MLP không hỗ trợ `class_weight` → dùng SMOTE.
+- [x] Thêm cả hai vào `available_models()`; thêm `extra_trees` vào `DEFAULT_MODELS`.
+- [x] XGBoost: giữ tùy chọn (`requirements.txt` để ở dạng chú thích), không bắt buộc.
+- [x] Test `tests/test_models.py`: khởi tạo, fit/predict trong pipeline, quy tắc scale, `class_weight`.
+- [x] Sửa lỗi kế thừa từ template: `get_model(..., n_estimators=50)` gây `TypeError` (tham số trùng) → nay `overrides` ghi đè được giá trị mặc định.
 
 ### GIAI ĐOẠN 2: MÔ HÌNH TỐI GIẢN 2 BIẾN — CHICCO & JURMAN 2020 (không cần Zigong)
-- [ ] `config.FEATURE_SETS = {"all": 11 đặc trưng, "minimal_two": ["ejection_fraction", "serum_creatinine"]}`.
-- [ ] `split_features_target(..., feature_set=)`, `make_preprocessor(..., feature_set=)`, `make_full_pipeline(..., feature_set=)`; chỉ số cột log1p tính theo tập đặc trưng.
-- [ ] `src/train.py`: `--feature-set {all, minimal_two, compare}`.
+- [x] `config.FEATURE_SETS = {"all": 11 đặc trưng, "minimal_two": ["ejection_fraction", "serum_creatinine"]}`.
+- [x] `split_features_target(..., feature_set=)`, `make_preprocessor(..., feature_set=)`, `make_full_pipeline(..., feature_set=)`; chỉ số cột log1p tính theo tập đặc trưng.
+- [x] `src/train.py`: `--feature-set {all, minimal_two, compare}`.
   - `compare`: grouped CV trên train+val, **cùng các fold** cho cả hai tập đặc trưng → hiệu số theo cặp (minimal − all), trung bình, độ lệch chuẩn, CI 95% (t, df = k−1; xấp xỉ vì các fold không độc lập).
   - Ghi `reports/minimal_vs_full_feature_comparison.csv`: Recall, Specificity, PR-AUC, ROC-AUC, MCC, Brier, F2.
-- [ ] Test `tests/test_feature_sets.py`.
+- [x] Test `tests/test_feature_sets.py`.
+- **Kết quả (paired grouped CV 5 fold trên train+val, Recall ≥ 0.80):** mô hình 2 biến không kém mô hình 11 biến; ROC-AUC RF 0.78 → 0.83, Extra Trees 0.75 → 0.83, GB 0.74 → 0.78 (CI hiệu số chỉ loại trừ 0 ở GB). Ủng hộ Chicco & Jurman (2020) về hướng, chưa đủ mạnh về thống kê với 239 BN.
 
 ### GIAI ĐOẠN 3: TIẾP NHẬN & ĐỒNG BỘ DỮ LIỆU ZIGONG (cần dữ liệu)
 **Kết cục đã chọn (so sánh các phương án):**

@@ -23,10 +23,11 @@ setup required.
 ```bash
 make setup           # create .venv + install requirements.txt
 make verify          # check data/raw/ matches 299 records / 96 deaths / 0 missing / sha256
-make test            # 99 unit tests (must pass, especially tests/test_data_leakage.py)
+make test            # 138 unit tests (must pass, especially tests/test_data_leakage.py)
 make eda             # export EDA tables + figures into reports/
 make train           # train + compare 4 models, F2-tuned threshold -> reports/
 make train-recall80  # same, threshold = highest one keeping validation Recall >= 0.80
+make compare-features # paired CV: serum creatinine + EF only vs all 11 features
 ```
 On Windows, replace `.venv/bin/python` with `.venv\Scripts\python` (or run
 the commands in the Makefile by hand).
@@ -47,14 +48,14 @@ heart-failure/
 │   ├── data_loader.py      # load + patient_id + validate schema + synthetic data generator
 │   ├── eda.py               # reusable EDA helpers (LVEF / creatinine / sodium strata, leakage report)
 │   ├── preprocessing.py     # patient-level split, leakage-safe Pipeline
-│   ├── models.py            # Logistic Regression ... Stacking Ensemble
+│   ├── models.py            # Logistic Regression, RF, Extra Trees, MLP ... Stacking
 │   ├── evaluation.py        # Recall/PR-AUC/F2, threshold tuning, grouped CV
 │   ├── explainability.py    # SHAP, permutation importance, odds ratios
 │   └── train.py             # end-to-end training CLI
 ├── scripts/
 │   ├── download_data.py     # fetch data from UCI (+ checksum verification)
 │   └── run_eda.py
-├── tests/                    # 99 unit tests, including the anti-leakage suite
+├── tests/                    # 138 unit tests, including the anti-leakage suite
 ├── docs/
 │   ├── DETAILED_EXAM_REPORT.md   # detailed exam-solution report (Vietnamese)
 │   └── literature/                # 7 paper summaries + dataset spec
@@ -112,6 +113,23 @@ The test set has only 19 deaths, so test differences of one or two patients
 swing Recall by 0.05–0.10; CV is more reliable. With the default F2 policy
 (`make train`), all models reach CV Recall 0.84–0.91 but Specificity only
 0.27–0.45 — see `reports/train_log.txt`.
+
+**Two-feature model (Chicco & Jurman 2020).** `make compare-features` runs a
+paired grouped CV on train+val (same 5 folds for both arms, Recall ≥ 0.80
+threshold policy). Serum creatinine + ejection fraction alone is not worse
+than all 11 features; point estimates are slightly better, but most 95% CIs
+of the difference include 0:
+
+| Model | ROC-AUC (11 → 2 features) | PR-AUC (11 → 2) | Δ ROC-AUC [95% CI] |
+|---|---|---|---|
+| Logistic Regression | 0.77 → 0.77 | 0.63 → 0.65 | +0.01 [−0.04, 0.05] |
+| Random Forest | 0.78 → 0.83 | 0.67 → 0.71 | +0.05 [−0.01, 0.11] |
+| Extra Trees | 0.75 → 0.83 | 0.61 → 0.74 | +0.08 [−0.01, 0.16] |
+| Gradient Boosting | 0.74 → 0.78 | 0.63 → 0.69 | +0.04 [0.02, 0.06] |
+
+Extra Trees (the best model of Ishaq et al. 2021) performs on par with Random
+Forest on all 11 features (CV ROC-AUC 0.75, PR-AUC 0.61); the MLP is weaker
+(0.72 / 0.59).
 
 **Explainability.** SHAP on Random Forest ranks `serum_creatinine` and
 `ejection_fraction` first, matching Chicco & Jurman (2020). Logistic-regression

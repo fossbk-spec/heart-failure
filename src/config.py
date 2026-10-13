@@ -48,6 +48,22 @@ BINARY_FEATURES = ["anaemia", "diabetes", "high_blood_pressure", "sex", "smoking
 
 FEATURE_COLUMNS = NUMERIC_FEATURES + BINARY_FEATURES
 
+# Named feature sets: (numeric, binary). "minimal_two" tests the Chicco &
+# Jurman (2020) claim that serum creatinine + ejection fraction suffice.
+FEATURE_SETS: dict[str, tuple[list[str], list[str]]] = {
+    "all": (NUMERIC_FEATURES, BINARY_FEATURES),
+    "minimal_two": (["ejection_fraction", "serum_creatinine"], []),
+}
+
+
+def get_feature_set(name: str = "all") -> tuple[list[str], list[str]]:
+    """Return copies of the (numeric, binary) columns of a named feature set."""
+    if name not in FEATURE_SETS:
+        raise ValueError(f"Unknown feature set '{name}'. Valid options: {sorted(FEATURE_SETS)}")
+    numeric, binary = FEATURE_SETS[name]
+    return list(numeric), list(binary)
+
+
 # Column order EXACTLY as in the original CSV (used for schema validation).
 RAW_COLUMNS = [
     "age",

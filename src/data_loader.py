@@ -146,7 +146,7 @@ def profile_dataset(df: pd.DataFrame) -> DatasetProfile:
 
 
 def split_features_target(
-    df: pd.DataFrame, *, keep_id: bool = False
+    df: pd.DataFrame, *, keep_id: bool = False, feature_set: str = "all"
 ) -> tuple[pd.DataFrame, pd.Series]:
     """Split into the feature matrix X and the label vector y.
 
@@ -154,8 +154,11 @@ def split_features_target(
     - `patient_id`: an identifier with no clinical meaning (identifier leakage).
     - `time` (follow-up days): known only AFTER the outcome; death truncates
       follow-up, so it encodes the label (temporal / target leakage).
+
+    `feature_set` selects the columns of X (see `config.FEATURE_SETS`).
     """
-    cols = config.FEATURE_COLUMNS.copy()
+    numeric, binary = config.get_feature_set(feature_set)
+    cols = numeric + binary
     if keep_id:
         cols = [config.ID_COLUMN] + cols
     X = df[cols].copy()

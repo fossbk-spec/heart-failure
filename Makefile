@@ -1,4 +1,4 @@
-.PHONY: help setup data verify eda train train-recall80 train-fast test lint clean
+.PHONY: help setup data verify eda train train-recall80 compare-features train-fast test lint clean
 
 help:  ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -22,6 +22,10 @@ train:  ## Full training run (4 models + cross-validation, F2-tuned threshold)
 
 train-recall80:  ## Same, but threshold = highest one keeping validation Recall >= 0.80
 	.venv/bin/python -m src.train --min-recall 0.8 --output reports/recall80
+
+compare-features:  ## Paired CV: serum creatinine + EF only vs all features (Chicco & Jurman 2020)
+	.venv/bin/python -m src.train --feature-set compare --min-recall 0.8 \
+		--models logistic_regression random_forest extra_trees gradient_boosting
 
 train-fast:  ## Fast training run, skipping cross-validation
 	.venv/bin/python -m src.train --models logistic_regression random_forest --no-cv

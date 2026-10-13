@@ -179,6 +179,7 @@ def make_preprocessor(
     knn_neighbors: int = 5,
     log_skewed: bool = True,
     scale: bool = True,
+    feature_set: str = "all",
 ) -> ColumnTransformer:
     """Build a `ColumnTransformer` for tabular/EHR preprocessing.
 
@@ -200,7 +201,9 @@ def make_preprocessor(
         log_skewed: apply `log1p` to `config.SKEWED_FEATURES`.
         scale: whether to apply StandardScaler to continuous features (turn
             off for tree-based models).
+        feature_set: which columns to use (see `config.FEATURE_SETS`).
     """
+    numeric, binary = config.get_feature_set(feature_set)
     if numeric_imputer == "knn":
         imputer: object = KNNImputer(n_neighbors=knn_neighbors, weights="distance")
     elif numeric_imputer == "median":
@@ -209,10 +212,8 @@ def make_preprocessor(
         raise ValueError("numeric_imputer must be 'knn' or 'median'.")
 
     numeric_steps: list[tuple[str, object]] = [("imputer", imputer)]
-    if log_skewed:
-        skewed_idx = tuple(
-            config.NUMERIC_FEATURES.index(c) for c in config.SKEWED_FEATURES
-        )
+    skewed_idx = tuple(i for i, c in enumerate(numeric) if c in config.SKEWED_FEATURES)
+    if log_skewed and skewed_idx:
         numeric_steps.append(
             (
                 "log",
@@ -228,13 +229,13 @@ def make_preprocessor(
 
     numeric_pipe = Pipeline(numeric_steps)
 
-    binary_pipe = Pipeline([("imputer", SimpleImputer(strategy="most_frequent"))])
+    transformers: list[tuple[str, object, list[str]]] = [("num", numeric_pipe, numeric)]
+    if binary:
+        binary_pipe = Pipeline([("imputer", SimpleImputer(strategy="most_frequent"))])
+        transformers.append(("bin", binary_pipe, binary))
 
     return ColumnTransformer(
-        transformers=[
-            ("num", numeric_pipe, config.NUMERIC_FEATURES),
-            ("bin", binary_pipe, config.BINARY_FEATURES),
-        ],
+        transformers=transformers,
         remainder="drop",
         verbose_feature_names_out=False,
     )
@@ -275,6 +276,7 @@ def make_full_pipeline(
     smote_k_neighbors: int = 5,
     numeric_imputer: str = "median",
     scale: bool = True,
+    feature_set: str = "all",
     random_state: int = config.RANDOM_STATE,
 ) -> ImbPipeline:
     """Combine preprocessing + SMOTE + model into a SINGLE pipeline.
@@ -284,7 +286,12 @@ def make_full_pipeline(
     `fit_resample` is only ever called on the train portion of each fold.
     """
     steps: list[tuple[str, object]] = [
-        ("preprocessor", make_preprocessor(numeric_imputer=numeric_imputer, scale=scale))
+        (
+            "preprocessor",
+            make_preprocessor(
+                numeric_imputer=numeric_imputer, scale=scale, feature_set=feature_set
+            ),
+        )
     ]
     if use_smote:
         steps.append(
