@@ -2,7 +2,7 @@
 
 **Dự án:** Dự đoán tử vong ở bệnh nhân suy tim bằng Machine Learning
 **Repository:** https://github.com/fossbk-spec/heart-failure
-**Ngày lập báo cáo:** 2026-10-13
+**Ngày lập báo cáo:** 2026-10-13 (cập nhật 2026-10-14)
 **Công cụ hỗ trợ:** Claude Code và Codex (chỉ dùng trong quá trình phát triển; không xuất hiện với tư cách contributor trên GitHub)
 **Kế hoạch tham chiếu:** [`docs/ACTION_PLAN_FOR_CLAUDE.md`](ACTION_PLAN_FOR_CLAUDE.md) v1.1
 
@@ -21,6 +21,7 @@
 | Giai đoạn 2 — Mô hình tối giản 2 biến (Chicco & Jurman 2020) | Hoàn thành |
 | Giai đoạn 3 — Tiếp nhận và đồng bộ dữ liệu Zigong | Hoàn thành |
 | Giai đoạn 4 — Kiểm chứng ngoài UCI → Zigong (phương án A) | Hoàn thành |
+| Báo cáo tiến độ, script tải Zigong, hướng dẫn chuyển máy | Hoàn thành |
 | Giai đoạn 5 — Biểu đồ 300 DPI và `references.bib` | Chưa làm |
 | Giai đoạn 6 — Tuỳ chọn RobustScaler | Chưa làm |
 | Giai đoạn 7 — Phân tích sống còn (Cox, tuỳ chọn) | Chưa làm |
@@ -28,6 +29,7 @@
 **Trạng thái kỹ thuật hiện tại:**
 - 172 unit test đều qua (~25 giây), ruff không báo lỗi.
 - CI chạy toàn bộ pipeline trên dữ liệu giả lập.
+- Mọi commit đã push lên `origin/main`; không còn thay đổi cục bộ.
 - Repo không chứa file dữ liệu Zigong nào.
 
 **Kết luận khoa học chính:**
@@ -165,6 +167,21 @@
 - **Phân tích độ nhạy:** mốc 28 và 180 ngày, và tập con `uci_like`.
 - Thêm lệnh `make inspect-zigong` và `make external-validation`. CI chạy cả hai trên dữ liệu giả lập.
 
+### 4.9. Tiến độ ngày 2026-10-14
+- **Báo cáo tổng hợp:** thêm `docs/PROGRESS_REPORT.md`, chính là tài liệu này.
+- **Script tải Zigong:** thêm `scripts/download_zigong.py` và lệnh `make download-zigong PHYSIONET_USER=<tên>`.
+  - Mỗi máy tự tải bằng tài khoản PhysioNet đã xác thực. Mật khẩu được hỏi khi chạy, không lưu lại.
+  - Có chế độ `--verify-only` để kiểm tra 3 điều kiện:
+    - 2.008 dòng;
+    - 42 ca tử vong trong 90 ngày;
+    - sha256 trùng với bản đã dùng cho các kết quả trong báo cáo (`f2be23ee…311ae8`).
+  - Bản dữ liệu trên máy hiện tại đạt cả 3 điều kiện.
+  - Yêu cầu đẩy thẳng `data/raw/zigong/` lên GitHub đã bị từ chối vì repo công khai và DUA cấm chia sẻ lại dữ liệu.
+- **Hướng dẫn chuyển máy:** thêm `docs/HANDOVER_NEW_MACHINE.md`, gồm:
+  - những gì không nằm trong git;
+  - cách cài đặt môi trường và xử lý các lỗi đã gặp (Avast/pip, `imblearn` của Anaconda, kernel Jupyter);
+  - cách tái tạo kết quả và các quy ước làm việc.
+
 ---
 
 ## 5. Kết quả
@@ -267,7 +284,7 @@ Grouped CV trên train+val (trung bình ± độ lệch chuẩn qua 5 fold):
 | Thành phần | Nội dung |
 |---|---|
 | `src/` | `config`, `data_loader`, `preprocessing`, `models`, `evaluation`, `explainability`, `eda`, `train`, `harmonization`, `external_validation` |
-| `scripts/` | `download_data`, `run_eda`, `inspect_zigong`, `run_external_validation` |
+| `scripts/` | `download_data`, `download_zigong`, `run_eda`, `inspect_zigong`, `run_external_validation` |
 | `tests/` | 172 test, gồm bộ chống rò rỉ `test_data_leakage.py`, `test_feature_sets.py`, `test_harmonization.py`, `test_external_validation.py` |
 | `notebooks/` | 01 EDA, 02 tiền xử lý và mất cân bằng, 03 huấn luyện và đánh giá (đã chạy sẵn) |
 | `reports/` | Bảng so sánh mô hình, kết quả CV, EDA, SHAP. Kết quả Zigong nằm trong `reports/external_validation/` và bị git bỏ qua |
@@ -276,7 +293,7 @@ Grouped CV trên train+val (trung bình ± độ lệch chuẩn qua 5 fold):
 **Lệnh chính:**
 - `make verify`, `make test`, `make eda`;
 - `make train`, `make train-recall80`, `make compare-features`;
-- `make inspect-zigong`, `make external-validation`.
+- `make download-zigong`, `make inspect-zigong`, `make external-validation`.
 
 **Lịch sử commit:**
 
@@ -288,8 +305,11 @@ Grouped CV trên train+val (trung bình ± độ lệch chuẩn qua 5 fold):
 | `3e1dc34` | Giai đoạn 0 | Đã push |
 | `90f547f` | Giai đoạn 1 | Đã push |
 | `0ab9402` | Giai đoạn 2 | Đã push |
-| `ea504fc` | Giai đoạn 3 | Chưa push |
-| `dccfbde` | Giai đoạn 4 | Chưa push |
+| `ea504fc` | Giai đoạn 3 | Đã push |
+| `dccfbde` | Giai đoạn 4 | Đã push |
+| `6336988` | Báo cáo tiến độ | Đã push |
+| `d55bc3d` | Script tải và kiểm tra Zigong | Đã push |
+| `d7f2384` | Hướng dẫn chuyển máy | Đã push |
 
 ---
 
@@ -297,7 +317,7 @@ Grouped CV trên train+val (trung bình ± độ lệch chuẩn qua 5 fold):
 
 | Ưu tiên | Việc | Người thực hiện |
 |---|---|---|
-| Cao | Push `ea504fc` và `dccfbde` lên GitHub | Chờ nhóm đồng ý |
+| Cao | Thử `scripts/download_zigong.py` trên máy mới. Bước tải thật từ PhysioNet chưa được chạy thử | Nhóm |
 | Cao | Tải lại từ điển biến Zigong để xác nhận đơn vị CK | Nhóm, qua tài khoản PhysioNet |
 | Trung bình | **Giai đoạn 5:** biểu đồ hiệu chuẩn (UCI có/không SMOTE, Zigong trước/sau hiệu chỉnh), đường PR, SHAP ở 300 DPI; `references.bib` kèm DOI | Claude / Codex |
 | Thấp | **Giai đoạn 6:** tuỳ chọn RobustScaler, mặc định vẫn là StandardScaler | Claude / Codex |
