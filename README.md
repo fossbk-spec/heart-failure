@@ -23,11 +23,12 @@ setup required.
 ```bash
 make setup           # create .venv + install requirements.txt
 make verify          # check data/raw/ matches 299 records / 96 deaths / 0 missing / sha256
-make test            # 138 unit tests (must pass, especially tests/test_data_leakage.py)
+make test            # 172 unit tests (must pass, especially tests/test_data_leakage.py)
 make eda             # export EDA tables + figures into reports/
 make train           # train + compare 4 models, F2-tuned threshold -> reports/
 make train-recall80  # same, threshold = highest one keeping validation Recall >= 0.80
 make compare-features # paired CV: serum creatinine + EF only vs all 11 features
+make external-validation  # develop on UCI, validate on PhysioNet Zigong (needs the restricted data)
 ```
 On Windows, replace `.venv/bin/python` with `.venv\Scripts\python` (or run
 the commands in the Makefile by hand).
@@ -55,7 +56,7 @@ heart-failure/
 ├── scripts/
 │   ├── download_data.py     # fetch data from UCI (+ checksum verification)
 │   └── run_eda.py
-├── tests/                    # 138 unit tests, including the anti-leakage suite
+├── tests/                    # 172 unit tests, including the anti-leakage suite
 ├── docs/
 │   ├── DETAILED_EXAM_REPORT.md   # detailed exam-solution report (Vietnamese)
 │   └── literature/                # 7 paper summaries + dataset spec
@@ -130,6 +131,44 @@ of the difference include 0:
 Extra Trees (the best model of Ishaq et al. 2021) performs on par with Random
 Forest on all 11 features (CV ROC-AUC 0.75, PR-AUC 0.61); the MLP is weaker
 (0.72 / 0.59).
+
+## External validation on PhysioNet Zigong
+Zigong (Zhang et al. 2021, 2,008 admissions, China 2016–2019) is
+restricted-access (PhysioNet Restricted Health Data License 1.5.0): place
+`dat.csv` in `data/raw/zigong/` (git-ignored, never committed). CI runs the
+same code on synthetic data only.
+
+`src/harmonization.py` maps both cohorts onto 9 shared features (age in
+Zigong's decade bands, sex, diabetes, anaemia from hemoglobin, LVEF, serum
+creatinine µmol/L → mg/dL, sodium, platelets, CK) and a fixed-horizon label:
+**death within 90 days** (UCI: 69/256 after dropping patients censored alive
+before day 90; Zigong: 42/2,008 = 2.1%). `high_blood_pressure` and `smoking`
+do not exist in Zigong. LVEF is missing in 68% of Zigong admissions and is
+never imputed: LVEF models are applied only to admissions with a measured LVEF
+(10 deaths), the `no_ef` model to all admissions. Models are fitted on UCI only,
+without SMOTE.
+
+Primary analysis (90-day death, all Zigong admissions):
+
+| Model (features) | Zigong n / deaths | ROC-AUC [95% bootstrap CI] | Mean predicted vs observed risk | Calibration slope |
+|---|---|---|---|---|
+| Logistic Regression (8, no LVEF) | 2,008 / 42 | 0.65 [0.56, 0.74] | 0.34 vs 0.021 | 0.83 |
+| Random Forest (8, no LVEF) | 2,008 / 42 | 0.61 [0.52, 0.70] | 0.37 vs 0.021 | 0.53 |
+| Logistic Regression (creatinine + EF) | 635 / 10 | 0.72 [0.58, 0.86] | 0.17 vs 0.016 | 1.05 |
+| Random Forest (creatinine + EF) | 635 / 10 | 0.79 [0.71, 0.87] | 0.18 vs 0.016 | 0.82 |
+
+- Discrimination transports only modestly, and the 10-death LVEF cohort gives
+  wide CIs. The simplest models transport best: Logistic Regression beats the
+  tree ensembles without LVEF, and the two-feature model is the strongest.
+- Calibration fails: UCI models predict ~16x the observed Zigong risk
+  (calibration-in-the-large ≈ −3.4 on the logit scale). After a local
+  intercept update the Brier score only reaches the no-skill level, so the
+  models must not be used on a new population without recalibration.
+- At the UCI threshold (Recall ≥ 0.80 internally) the `no_ef` Logistic
+  Regression flags 95% of Zigong deaths but only 18% specificity.
+- Results are consistent at 28 and 180 days and in the UCI-like subset
+  (age ≥ 40, NYHA III–IV). Zigong has no patient identifier, so repeated
+  admissions (7% of rows) cannot be grouped.
 
 **Explainability.** SHAP on Random Forest ranks `serum_creatinine` and
 `ejection_fraction` first, matching Chicco & Jurman (2020). Logistic-regression

@@ -70,3 +70,9 @@ jobs:
 
       - name: Run EDA end-to-end on synthetic data
         run: python scripts/run_eda.py --synthetic
+
+      # Zigong is restricted-access: CI only exercises the code on synthetic data.
+      - name: Run UCI -> Zigong harmonization + external validation on synthetic data
+        run: |
+          python scripts/inspect_zigong.py --synthetic
+          python scripts/run_external_validation.py --synthetic --n-boot 20 --models logistic_regression

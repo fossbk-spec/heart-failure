@@ -1,4 +1,4 @@
-.PHONY: help setup data verify eda train train-recall80 compare-features train-fast test lint clean
+.PHONY: help setup data verify eda train train-recall80 compare-features inspect-zigong external-validation train-fast test lint clean
 
 help:  ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -26,6 +26,12 @@ train-recall80:  ## Same, but threshold = highest one keeping validation Recall 
 compare-features:  ## Paired CV: serum creatinine + EF only vs all features (Chicco & Jurman 2020)
 	.venv/bin/python -m src.train --feature-set compare --min-recall 0.8 \
 		--models logistic_regression random_forest extra_trees gradient_boosting
+
+inspect-zigong:  ## Aggregate profile of the restricted Zigong data in data/raw/zigong/
+	.venv/bin/python scripts/inspect_zigong.py
+
+external-validation:  ## Develop on UCI, validate on Zigong (90-day death + sensitivity analyses)
+	.venv/bin/python scripts/run_external_validation.py
 
 train-fast:  ## Fast training run, skipping cross-validation
 	.venv/bin/python -m src.train --models logistic_regression random_forest --no-cv

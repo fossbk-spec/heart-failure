@@ -180,6 +180,7 @@ def make_preprocessor(
     log_skewed: bool = True,
     scale: bool = True,
     feature_set: str = "all",
+    columns: tuple[list[str], list[str]] | None = None,
 ) -> ColumnTransformer:
     """Build a `ColumnTransformer` for tabular/EHR preprocessing.
 
@@ -202,8 +203,13 @@ def make_preprocessor(
         scale: whether to apply StandardScaler to continuous features (turn
             off for tree-based models).
         feature_set: which columns to use (see `config.FEATURE_SETS`).
+        columns: explicit (numeric, binary) column lists; overrides
+            `feature_set` (used for the harmonized UCI/Zigong schema).
     """
-    numeric, binary = config.get_feature_set(feature_set)
+    if columns is not None:
+        numeric, binary = list(columns[0]), list(columns[1])
+    else:
+        numeric, binary = config.get_feature_set(feature_set)
     if numeric_imputer == "knn":
         imputer: object = KNNImputer(n_neighbors=knn_neighbors, weights="distance")
     elif numeric_imputer == "median":
@@ -277,6 +283,7 @@ def make_full_pipeline(
     numeric_imputer: str = "median",
     scale: bool = True,
     feature_set: str = "all",
+    columns: tuple[list[str], list[str]] | None = None,
     random_state: int = config.RANDOM_STATE,
 ) -> ImbPipeline:
     """Combine preprocessing + SMOTE + model into a SINGLE pipeline.
@@ -289,7 +296,10 @@ def make_full_pipeline(
         (
             "preprocessor",
             make_preprocessor(
-                numeric_imputer=numeric_imputer, scale=scale, feature_set=feature_set
+                numeric_imputer=numeric_imputer,
+                scale=scale,
+                feature_set=feature_set,
+                columns=columns,
             ),
         )
     ]

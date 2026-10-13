@@ -122,12 +122,26 @@ Quy tắc nhãn UCI ở mốc H ngày: `1` nếu `DEATH_EVENT=1` và `time ≤ H
 **Hệ quả cho Giai đoạn 4:** với 42 ca tử vong 90 ngày, kiểm chứng ngoài UCI → Zigong chỉ cho ước lượng phân biệt (AUC) có CI rộng; tỷ lệ tử vong chênh 13 lần (27% vs 2.1%) nên bắt buộc hiệu chỉnh lại intercept. Huấn luyện trên Zigong (42 ca / 9 đặc trưng ≈ 4.7 ca/đặc trưng) không đủ cho mô hình ML phức tạp.
 
 ### GIAI ĐOẠN 4: KIỂM CHỨNG NGOÀI (cần dữ liệu)
-- [ ] `scripts/run_external_validation.py`:
-  1. Huấn luyện trên UCI (tập đặc trưng chung, nhãn 90 ngày) → đánh giá trên Zigong; và chiều ngược lại.
-  2. Mô hình nội bộ Zigong (grouped CV theo bệnh nhân nếu có ID).
+- [x] `scripts/run_external_validation.py` + `src/external_validation.py` (phương án A — chỉ chiều UCI → Zigong):
+  1. Huấn luyện trên UCI (tập đặc trưng chung, nhãn 90 ngày, không SMOTE) → đánh giá trên Zigong. Chiều ngược lại bị loại (Zigong chỉ có 42 ca tử vong).
+  2. ~~Mô hình nội bộ Zigong~~ — bỏ theo phương án A (không đủ ca tử vong, không có ID bệnh nhân).
   3. **Cohort A**: chỉ BN có LVEF (thiếu không ngẫu nhiên → báo cáo thiên lệch chọn mẫu). **Cohort B**: bỏ LVEF, thêm biến chỉ báo thiếu; không nội suy 68% LVEF.
   4. Báo cáo khác biệt quần thể (Zigong: tuổi trung vị 77, 58% nữ; UCI: tuổi TB 61, 35% nữ) và lệch hiệu chuẩn.
-- [ ] Nếu số ca tử vong 90 ngày ở Zigong < ~100: báo cáo CI rộng, không kết luận mạnh.
+- [x] Số ca tử vong 90 ngày ở Zigong = 42 (< ~100): báo cáo CI bootstrap, không kết luận mạnh.
+
+**Kết quả (2026-10-13, phân tích chính: tử vong 90 ngày, toàn bộ Zigong):**
+
+| Mô hình (đặc trưng) | Zigong n / tử vong | ROC-AUC [CI 95%] | Nguy cơ dự đoán TB vs quan sát | Calibration slope |
+|---|---|---|---|---|
+| Logistic Regression (8, không LVEF) | 2,008 / 42 | 0.65 [0.56, 0.74] | 0.34 vs 0.021 | 0.83 |
+| Random Forest (8, không LVEF) | 2,008 / 42 | 0.61 [0.52, 0.70] | 0.37 vs 0.021 | 0.53 |
+| Extra Trees (8, không LVEF) | 2,008 / 42 | 0.59 [0.50, 0.69] | 0.34 vs 0.021 | 0.68 |
+| Logistic Regression (creatinine + EF) | 635 / 10 | 0.72 [0.58, 0.86] | 0.17 vs 0.016 | 1.05 |
+| Random Forest (creatinine + EF) | 635 / 10 | 0.79 [0.71, 0.87] | 0.18 vs 0.016 | 0.82 |
+
+- Khả năng phân biệt chuyển giao ở mức khiêm tốn; mô hình càng đơn giản càng chuyển giao tốt (LR > cây khi không có LVEF; mô hình 2 biến tốt nhất nhưng chỉ có 10 ca tử vong).
+- Hiệu chuẩn thất bại: dự đoán gấp ~16 lần nguy cơ thực (calibration-in-the-large ≈ −3.4). Sau khi hiệu chỉnh intercept tại chỗ, Brier chỉ bằng mức không có kỹ năng → không được dùng trên quần thể mới khi chưa hiệu chỉnh lại.
+- Kết quả nhất quán ở mốc 28 / 180 ngày và tập con giống UCI.
 
 ### GIAI ĐOẠN 5: BIỂU ĐỒ & TRÍCH DẪN
 - [ ] `scripts/generate_clinical_figures.py` (300 DPI, `reports/figures/`): calibration curve (LR / RF / ETC, có và không SMOTE) + calibration slope/intercept + Brier; đường PR; SHAP summary & bar.
