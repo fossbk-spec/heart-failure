@@ -87,17 +87,39 @@
 
 Quy tắc nhãn UCI ở mốc H ngày: `1` nếu `DEATH_EVENT=1` và `time ≤ H`; `0` nếu còn sống tại H (`time ≥ H`, hoặc tử vong sau H); **loại** nếu còn sống nhưng bị kiểm duyệt trước H. Pipeline UCI chính vẫn giữ nhãn `DEATH_EVENT` để so sánh được với y văn.
 
-- [ ] Nhóm đặt dữ liệu Zigong v1.3 (gồm file mô tả biến) vào `data/raw/zigong/`.
-- [ ] `scripts/inspect_zigong.py`: tên cột, kiểu, đơn vị, tỷ lệ thiếu, số ca từng kết cục, biến định danh bệnh nhân, số lần nhập viện/BN.
-- [ ] Chốt bảng ánh xạ sau khi xem file mô tả biến. Các điểm phải kiểm tra:
+- [x] Nhóm đặt dữ liệu Zigong v1.3 vào `data/raw/zigong/` (`dat.csv`, `dat_md.csv`; file mô tả biến chưa tải xong — có file `.crdownload` 0 byte).
+- [x] `scripts/inspect_zigong.py` (chỉ in số liệu tổng hợp): tên cột, kiểu, đơn vị, tỷ lệ thiếu, số ca từng kết cục, biến định danh bệnh nhân, số lần nhập viện/BN.
+- [x] Chốt bảng ánh xạ (suy từ phân bố giá trị; cần đối chiếu lại file mô tả biến khi tải được). Các điểm đã kiểm tra:
   - Đơn vị creatinine (µmol/L → mg/dL: chia 88.4), tiểu cầu (UCI ~263,358/µL ↔ 10⁹/L: chia 1000), CK (U/L vs mcg/L).
   - Tuổi: nếu Zigong ghi theo nhóm thập kỷ thì UCI chia nhóm giống hệt.
   - `smoking`: không có ở Zigong → bỏ khỏi tập đặc trưng chung.
   - `anaemia`: suy ra từ hemoglobin (WHO: nam < 13 g/dL, nữ < 12 g/dL).
   - Tăng huyết áp: chưa thấy trong danh sách bệnh đồng mắc của Zhang 2021 → xác minh.
   - **Biến định danh bệnh nhân**: 7% có ≥ 2 lần nhập viện (`visit.times`); nếu không gom nhóm được → ghi rõ là hạn chế.
-- [ ] `src/harmonization.py`: đổi tên biến, quy đổi đơn vị, suy ra `anaemia`, nhãn 90 ngày cho cả hai bộ, cột `source`; tập đặc trưng chung.
-- [ ] Test bằng dữ liệu giả lập cùng cấu trúc Zigong (CI không cần dữ liệu thật).
+- [x] `src/harmonization.py`: đổi tên biến, quy đổi đơn vị, suy ra `anaemia`, nhãn 90 ngày cho cả hai bộ, cột `source`; tập đặc trưng chung.
+- [x] Test bằng dữ liệu giả lập cùng cấu trúc Zigong (`tests/test_harmonization.py`, CI không cần dữ liệu thật).
+
+**Kết quả kiểm tra dữ liệu Zigong thật (2026-10-13):**
+
+| Hạng mục | Kết quả |
+|---|---|
+| Kích thước | 2,008 dòng × 167 cột; mỗi dòng = 1 lần nhập viện (`inpatient.number` duy nhất) |
+| Định danh bệnh nhân | **Không có**; `visit.times` ≥ 2 ở 148 dòng (7%) → không gom nhóm được, ghi là hạn chế |
+| Số ca tử vong | 28 ngày: 37 (1.8%) · **90 ngày: 42 (2.1%)** · 180 ngày: 57 (2.8%) — tất cả < ~100 |
+| UCI theo mốc | 28 ngày: 30/296 · 90 ngày: 69/256 · 180 ngày: 89/193 |
+| Tuổi | Chỉ có `ageCat` 8 nhóm (21–110); UCI được chia nhóm giống hệt (giá trị đại diện 25…95) |
+| Creatinine | `creatinine.enzymatic.method` µmol/L (trung vị 87.1) → /88.4 = 0.99 mg/dL (UCI 1.1) ✓ |
+| Tiểu cầu | `platelet` 10⁹/L (trung vị 135); UCI /1000 → 259.5 |
+| CK | `creatine.kinase` trung vị 91 vs UCI 259 — giả định cùng U/L, **cần xác minh** |
+| Natri | `sodium` mmol/L (trung vị 139 vs 136) ✓ |
+| Thiếu máu | Suy ra từ `hemoglobin` (g/L, WHO) → 60.9% (UCI 44.1%) |
+| Không có | Tăng huyết áp, hút thuốc → bỏ khỏi tập đặc trưng chung |
+| LVEF | Thiếu 68.4%; có LVEF ở 31.8% BN sống vs 23.8% BN tử vong 3 tháng → thiếu không ngẫu nhiên |
+| Khác biệt quần thể | Zigong: trung vị tuổi 75, nữ 57.9%, EF trung vị 51 (HFpEF nhiều); UCI: 65, 35.9%, EF 38 |
+| Tiêu chí giống UCI (`uci_like`) | Tuổi ≥ 40 + NYHA III–IV → 1,643 dòng, 37 ca tử vong 90 ngày |
+| Chất lượng nhãn | 5 dòng `DestinationDischarge = Died` nhưng `death.within.3.months = 0` → giữ nguyên, báo cáo |
+
+**Hệ quả cho Giai đoạn 4:** với 42 ca tử vong 90 ngày, kiểm chứng ngoài UCI → Zigong chỉ cho ước lượng phân biệt (AUC) có CI rộng; tỷ lệ tử vong chênh 13 lần (27% vs 2.1%) nên bắt buộc hiệu chỉnh lại intercept. Huấn luyện trên Zigong (42 ca / 9 đặc trưng ≈ 4.7 ca/đặc trưng) không đủ cho mô hình ML phức tạp.
 
 ### GIAI ĐOẠN 4: KIỂM CHỨNG NGOÀI (cần dữ liệu)
 - [ ] `scripts/run_external_validation.py`:
