@@ -10,6 +10,10 @@ Model-selection rationale for this problem:
   SMOTE-based branch.
 - **Random Forest / Gradient Boosting / XGBoost**: capture nonlinear
   interactions (e.g. ejection fraction x serum creatinine) that a linear model misses.
+- **Extra Trees**: the best model of Ishaq et al. (2021) on this dataset; more
+  randomized splits than Random Forest, so lower variance on small samples.
+- **MLP**: a small regularized neural network, kept as an exploratory arm —
+  299 patients are far too few for deep models.
 - **Stacking Ensemble**: base learners + a Logistic Regression meta-learner,
   with preprocessing + SMOTE nested inside each base learner so the
   stacking's internal CV never sees resampled data (a clean data-splitting
@@ -22,6 +26,7 @@ from collections.abc import Callable
 from typing import Any
 
 from sklearn.ensemble import (
+    ExtraTreesClassifier,
     GradientBoostingClassifier,
     RandomForestClassifier,
     StackingClassifier,
@@ -29,6 +34,7 @@ from sklearn.ensemble import (
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
@@ -56,46 +62,53 @@ def get_model(name: str, *, class_weight: str | None = None, **overrides: Any):
     """
     name = name.lower().replace("-", "_")
     rs = config.RANDOM_STATE
-    builders: dict[str, Any] = {
-        "logistic_regression": lambda: LogisticRegression(
-            max_iter=2000,
-            solver="liblinear",
-            class_weight=class_weight,
-            random_state=rs,
-            **overrides,
+    cw = {"class_weight": class_weight}
+    # (estimator class, default hyperparameters); `overrides` win over defaults.
+    specs: dict[str, tuple[type, dict[str, Any]]] = {
+        "logistic_regression": (
+            LogisticRegression,
+            {"max_iter": 2000, "solver": "liblinear", "random_state": rs, **cw},
         ),
-        "decision_tree": lambda: DecisionTreeClassifier(
-            max_depth=6,
-            min_samples_leaf=20,
-            class_weight=class_weight,
-            random_state=rs,
-            **overrides,
+        "decision_tree": (
+            DecisionTreeClassifier,
+            {"max_depth": 6, "min_samples_leaf": 20, "random_state": rs, **cw},
         ),
-        "random_forest": lambda: RandomForestClassifier(
-            n_estimators=400,
-            max_depth=None,
-            min_samples_leaf=3,
-            n_jobs=-1,
-            class_weight=class_weight,
-            random_state=rs,
-            **overrides,
+        "random_forest": (
+            RandomForestClassifier,
+            {"n_estimators": 400, "max_depth": None, "min_samples_leaf": 3, "n_jobs": -1,
+             "random_state": rs, **cw},
         ),
-        "gradient_boosting": lambda: GradientBoostingClassifier(
-            n_estimators=200, learning_rate=0.05, max_depth=3, random_state=rs, **overrides
+        "extra_trees": (
+            ExtraTreesClassifier,
+            {"n_estimators": 400, "max_depth": None, "min_samples_leaf": 3, "n_jobs": -1,
+             "random_state": rs, **cw},
         ),
-        "svm": lambda: SVC(
-            kernel="rbf",
-            C=1.0,
-            probability=True,
-            class_weight=class_weight,
-            random_state=rs,
-            **overrides,
+        # Small, regularized network without early stopping: with ~190 training
+        # patients an internal early-stopping split would hold ~19 rows, part of
+        # them SMOTE-synthesized. L-BFGS converges reliably on small datasets.
+        # MLP has no `class_weight`; rely on SMOTE.
+        "mlp": (
+            MLPClassifier,
+            {"hidden_layer_sizes": (16,), "alpha": 1e-2, "solver": "lbfgs", "max_iter": 2000,
+             "random_state": rs},
         ),
-        "knn": lambda: KNeighborsClassifier(n_neighbors=15, weights="distance", **overrides),
-        "naive_bayes": lambda: GaussianNB(**overrides),
-        "xgboost": lambda: _build_xgboost(**overrides),
-        "stacking": lambda: build_stacking_ensemble(class_weight=class_weight),
+        "gradient_boosting": (
+            GradientBoostingClassifier,
+            {"n_estimators": 200, "learning_rate": 0.05, "max_depth": 3, "random_state": rs},
+        ),
+        "svm": (
+            SVC,
+            {"kernel": "rbf", "C": 1.0, "probability": True, "random_state": rs, **cw},
+        ),
+        "knn": (KNeighborsClassifier, {"n_neighbors": 15, "weights": "distance"}),
+        "naive_bayes": (GaussianNB, {}),
     }
+    builders: dict[str, Any] = {
+        key: (lambda cls=cls, defaults=defaults: cls(**{**defaults, **overrides}))
+        for key, (cls, defaults) in specs.items()
+    }
+    builders["xgboost"] = lambda: _build_xgboost(**overrides)
+    builders["stacking"] = lambda: build_stacking_ensemble(class_weight=class_weight)
     if name not in builders:
         raise KeyError(f"Model '{name}' does not exist. Valid options: {sorted(builders)}")
     return builders[name]()
@@ -175,8 +188,10 @@ def available_models() -> list[str]:
         "logistic_regression",
         "decision_tree",
         "random_forest",
+        "extra_trees",
         "gradient_boosting",
         "svm",
+        "mlp",
         "knn",
         "naive_bayes",
         "stacking",

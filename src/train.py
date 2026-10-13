@@ -27,7 +27,9 @@ from src.data_loader import (
     split_features_target,
 )
 
-DEFAULT_MODELS = ["logistic_regression", "random_forest", "gradient_boosting", "stacking"]
+DEFAULT_MODELS = [
+    "logistic_regression", "random_forest", "extra_trees", "gradient_boosting", "stacking",
+]
 
 
 def run_experiment(
