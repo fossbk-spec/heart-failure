@@ -23,12 +23,13 @@ setup required.
 ```bash
 make setup           # create .venv + install requirements.txt
 make verify          # check data/raw/ matches 299 records / 96 deaths / 0 missing / sha256
-make test            # 172 unit tests (must pass, especially tests/test_data_leakage.py)
+make test            # 188 unit tests (must pass, especially tests/test_data_leakage.py)
 make eda             # export EDA tables + figures into reports/
 make train           # train + compare 4 models, F2-tuned threshold -> reports/
 make train-recall80  # same, threshold = highest one keeping validation Recall >= 0.80
 make compare-features # paired CV: serum creatinine + EF only vs all 11 features
 make external-validation  # develop on UCI, validate on PhysioNet Zigong (needs the restricted data)
+make pooled-missing       # pool UCI + Zigong, compare ways to handle the missing LVEF
 ```
 On Windows, replace `.venv/bin/python` with `.venv\Scripts\python` (or run
 the commands in the Makefile by hand).
@@ -56,7 +57,7 @@ heart-failure/
 ├── scripts/
 │   ├── download_data.py     # fetch data from UCI (+ checksum verification)
 │   └── run_eda.py
-├── tests/                    # 172 unit tests, including the anti-leakage suite
+├── tests/                    # 188 unit tests, including the anti-leakage suite
 ├── docs/
 │   ├── DETAILED_EXAM_REPORT.md   # detailed exam-solution report (Vietnamese)
 │   └── literature/                # 7 paper summaries + dataset spec
@@ -172,6 +173,43 @@ Primary analysis (90-day death, all Zigong admissions):
 - Results are consistent at 28 and 180 days and in the UCI-like subset
   (age ≥ 40, NYHA III–IV). Zigong has no patient identifier, so repeated
   admissions (7% of rows) cannot be grouped.
+
+## Pooling UCI + Zigong: handling the missing LVEF
+`make pooled-missing` pools the 256 UCI patients and 2,008 Zigong admissions
+(90-day death, 111 deaths) and compares ways to handle LVEF, which is missing
+in 68% of Zigong rows. It uses repeated stratified 5-fold CV (3 repeats,
+stratified by cohort × outcome), with all preprocessing fitted inside the
+training folds. Pooled ROC-AUC (0.80–0.89) is inflated, because the cohorts
+differ 13-fold in mortality, so the comparison uses ROC-AUC **within**
+each cohort.
+
+| Scenario (no cohort indicator) | Rows | ROC-AUC within Zigong (all / LVEF measured) | ROC-AUC within UCI |
+|---|---|---|---|
+| Complete case: drop rows without LVEF | 891 | – / 0.74–0.82 | 0.62–0.65 |
+| Drop the LVEF feature | 2,264 | 0.72–0.76 / 0.77–0.84 | 0.51–0.55 |
+| Median imputation | 2,264 | 0.70–0.75 / 0.77–0.79 | 0.61–0.64 |
+| MICE imputation | 2,264 | 0.71–0.75 / 0.77–0.78 | 0.63–0.64 |
+| KNN imputation | 2,264 | 0.72–0.74 / 0.76–0.81 | 0.62–0.64 |
+| + missing indicator (median / MICE) | 2,264 | 0.64–0.71 / 0.78–0.80 | 0.62–0.64 |
+
+Ranges are across LR, RF and Extra Trees. The Zigong LVEF subset has only 10
+deaths.
+
+- **Imputation recovers almost nothing.** When observed Zigong LVEF values
+  are masked, MICE and KNN reach a mean absolute error of 10.8–11.0 points
+  (median imputation: 11.9) and correlate with the true value at only
+  r ≈ 0.2. Filling 68% of the column therefore mostly fabricates values.
+  Imputation also does not beat simply dropping LVEF within Zigong.
+- **LVEF matters for UCI,** where it is always measured: dropping it lowers
+  ROC-AUC within UCI from about 0.63 to 0.53.
+- **Missing indicators do not help:** within Zigong, mortality is 2.3%
+  without LVEF and 1.6% with it.
+- **Calibration:** pooling puts Zigong outcomes in the training data, so
+  calibration is far better than for UCI-only models (CITL −0.4 to −1.3,
+  and −0.05 to −0.5 with a cohort indicator, vs −3.4). This is internal
+  validation, not transport.
+- Zigong repeat admissions (7%) cannot be grouped, so the pooled CV is
+  slightly optimistic.
 
 **Explainability.** SHAP on Random Forest ranks `serum_creatinine` and
 `ejection_fraction` first, matching Chicco & Jurman (2020). Logistic-regression

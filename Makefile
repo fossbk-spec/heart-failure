@@ -1,4 +1,4 @@
-.PHONY: help setup data verify eda train train-recall80 compare-features download-zigong inspect-zigong external-validation train-fast test lint clean
+.PHONY: help setup data verify eda train train-recall80 compare-features download-zigong inspect-zigong external-validation pooled-missing train-fast test lint clean
 
 help:  ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -35,6 +35,9 @@ inspect-zigong:  ## Aggregate profile of the restricted Zigong data in data/raw/
 
 external-validation:  ## Develop on UCI, validate on Zigong (90-day death + sensitivity analyses)
 	.venv/bin/python scripts/run_external_validation.py
+
+pooled-missing:  ## Pool UCI + Zigong; compare complete case / drop LVEF / imputation
+	.venv/bin/python scripts/run_pooled_missing.py
 
 train-fast:  ## Fast training run, skipping cross-validation
 	.venv/bin/python -m src.train --models logistic_regression random_forest --no-cv

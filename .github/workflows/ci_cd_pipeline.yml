@@ -76,3 +76,4 @@ jobs:
         run: |
           python scripts/inspect_zigong.py --synthetic
           python scripts/run_external_validation.py --synthetic --n-boot 20 --models logistic_regression
+          python scripts/run_pooled_missing.py --synthetic --n-repeats 1 --models logistic_regression
