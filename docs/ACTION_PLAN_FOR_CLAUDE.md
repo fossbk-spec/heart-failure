@@ -2,10 +2,19 @@
 ## Dự án: Heart Failure Mortality Prediction using Big Data & Machine Learning
 **Đường dẫn thư mục dự án:** `D:\Antigravity\heart-failure`
 **Repo:** https://github.com/fossbk-spec/heart-failure
-**Phiên bản:** v1.2 (2026-10-14). v1.1 (2026-10-13) đã sửa v1.0 sau khi đối chiếu với mã nguồn; v1.2 bổ sung các Giai đoạn 8–11 theo kết quả Codex review và phân tích gộp UCI + Zigong.
+**Phiên bản:** v1.3 (2026-10-14). v1.1 (2026-10-13) đã sửa v1.0 sau khi đối chiếu với mã nguồn; v1.2 bổ sung các Giai đoạn 8–11 theo kết quả Codex review và phân tích gộp UCI + Zigong; v1.3 thêm Giai đoạn 12 (bộ dữ liệu kiểm chứng ngoài thứ hai và thứ ba).
 **Hướng dẫn cho sinh viên:** [`STUDENT_GUIDE_v1.2.md`](STUDENT_GUIDE_v1.2.md)
 
 ---
+
+## 0b. THAY ĐỔI CỦA v1.3 SO VỚI v1.2
+
+| # | v1.2 | v1.3 | Lý do |
+|---|---|---|---|
+| 1 | Chỉ có 2 bộ dữ liệu (UCI, Zigong) | Giai đoạn 12: thêm MIMIC-III (ưu tiên 1) và TOPCAT / SCD-HeFT qua BioLINCC (ưu tiên 2) | Nhóm Zigong có LVEF chỉ có 10 ca tử vong; cần một bộ kiểm chứng ngoài có LVEF và nhiều ca tử vong hơn |
+| 2 | Giai đoạn 7 (Cox) hoãn | Có thể mở lại khi có dữ liệu thử nghiệm lâm sàng theo dõi dài (TOPCAT, SCD-HeFT) | Các thử nghiệm này có thời gian đến tử vong được thẩm định |
+
+**Đã loại sau khi khảo sát (2026-10-14):** Kaggle "Heart Failure Prediction" (918 dòng, là bài toán chẩn đoán bệnh tim, không có kết cục tử vong); các bản sao UCI trên figshare/Kaggle (trùng bệnh nhân); Dryad "CHF in ICU" (Han et al., 15,983 BN; không có EF, natri, tiểu cầu, thiếu máu, tiểu đường, giới); bản DIG "teaching" (đã xáo trộn để ẩn danh, không dùng để công bố).
 
 ## 0a. THAY ĐỔI CỦA v1.2 SO VỚI v1.1
 
@@ -231,10 +240,48 @@ Nguồn: `docs/CODEX_REVIEW.md` (2026-10-14).
 - [ ] Xử lý mọi phát hiện mức Lớn; ghi các phát hiện còn lại vào `docs/CODEX_REVIEW.md`.
 - [ ] Commit theo từng giai đoạn, không có dòng đồng tác giả AI; CI xanh.
 
+### GIAI ĐOẠN 12: THÊM BỘ DỮ LIỆU KIỂM CHỨNG NGOÀI (v1.3; thời gian phụ thuộc thủ tục cấp quyền)
+
+**Ứng viên đã khảo sát:**
+
+| Ưu tiên | Bộ dữ liệu | Quy mô | Kết cục | Biến trùng UCI | Truy cập |
+|---|---|---|---|---|---|
+| 1 | **MIMIC-III, BN suy tim ICU** (theo Zhou, Li et al., Fudan; bản trích trên Dryad `doi:10.5061/dryad.0p2ngf1zd`) | 1,177 lượt nhập viện, tử vong nội viện 13.5% | Nội viện; **90 ngày** khi tự dựng cohort (có ngày tử vong) | 10/11 (thiếu hút thuốc), có LVEF và CK | PhysioNet credentialed + khóa CITI + DUA MIMIC |
+| 2 | **TOPCAT** (HFpEF, EF ≥ 45%) | ≈ 3,400 BN | Tử vong thẩm định, theo dõi nhiều năm | EF, xét nghiệm (đối chiếu danh mục biến) | BioLINCC: đăng ký, miễn IRB, DUA |
+| 2 | **SCD-HeFT** (EF ≤ 35%, NYHA II–III) | 2,521 BN | Tử vong | EF, xét nghiệm (đối chiếu) | BioLINCC |
+| 3 | HF-ACTION (HFrEF), DIG (bộ nghiên cứu đầy đủ) | ≈ 2,300 / ≈ 6,800 BN | Tử vong / nhập viện | Đối chiếu | BioLINCC |
+| 3 | MIMIC-IV, eICU-CRD | Hàng chục nghìn | Nội viện | LVEF gần như không có | PhysioNet credentialed; chỉ cho mô hình không LVEF |
+
+**12.0. Xin quyền truy cập (nhóm thực hiện, làm ngay vì mất nhiều tuần)**
+- [ ] MIMIC-III: mỗi thành viên dùng dữ liệu hoàn thành khóa CITI "Data or Specimens Only Research", nâng tài khoản PhysioNet lên credentialed (nếu chưa), ký DUA của MIMIC-III.
+- [ ] BioLINCC: đăng ký tài khoản; xin thư miễn IRB (hoặc phê duyệt IRB) của trường; nộp đơn cho TOPCAT và SCD-HeFT. Kiểm tra lại điều kiện vì trang BioLINCC đang thông báo "đang được xem xét để điều chỉnh".
+- [ ] Không dùng file Dryad của MIMIC-III cho tới khi người dùng có quyền MIMIC-III; chỉ dùng để đối chiếu số liệu tổng hợp với cohort tự dựng.
+
+**12.1. Dựng cohort MIMIC-III (cần quyền MIMIC-III)**
+- [ ] `scripts/build_mimic3_hf_cohort.py`: BN người lớn có mã ICD-9 suy tim (428.x và các mã liên quan, ghi rõ danh sách), **lần nhập ICU đầu tiên mỗi bệnh nhân** (`subject_id` → gom nhóm theo bệnh nhân được, khác Zigong).
+- [ ] LVEF lấy từ báo cáo siêu âm tim (`NOTEEVENTS`, category `Echo`) bằng biểu thức chính quy; ghi tỷ lệ trích được và kiểm tra thủ công trên một mẫu nhỏ (chỉ trên máy có quyền MIMIC).
+- [ ] Xét nghiệm 24 giờ đầu: creatinine (mg/dL), natri, tiểu cầu (K/µL = 10⁹/L), CK (U/L); bệnh đi kèm từ ICD-9: thiếu máu (280–285), tiểu đường (250.x), tăng huyết áp (401–405); tuổi (> 89 bị dịch trong MIMIC → gán nhóm ≥ 90), giới.
+- [ ] Kết cục: tử vong nội viện (`hospital_expire_flag`) và **tử vong 90 ngày** từ ngày nhập viện (`dod`).
+- [ ] Đối chiếu tổng hợp với Zhou/Li et al. (≈ 1,177 lượt, 13.5% tử vong nội viện); giải thích chênh lệch.
+- [ ] Dữ liệu đặt tại `data/raw/mimic3/` (đã bị `data/raw/*` trong `.gitignore` chặn); không commit, không đưa cho dịch vụ AI.
+
+**12.2. Đồng bộ và phân tích**
+- [ ] `harmonize_mimic3()` trong `src/harmonization.py` + bộ sinh dữ liệu giả lập cùng cấu trúc; test như `tests/test_harmonization.py`.
+- [ ] Kiểm chứng ngoài UCI → MIMIC-III (90 ngày; all9, no_ef, minimal_two) với CI bootstrap, hiệu chuẩn và hiệu chỉnh trên phần giữ lại (dùng lại code Giai đoạn 9.1).
+- [ ] Phân tích gộp 3 cohort và **leave-one-cohort-out**: huấn luyện trên 2 cohort, kiểm chứng trên cohort còn lại; so sánh lại 7 kịch bản xử lý LVEF (MIMIC-III có LVEF đầy đủ hơn Zigong).
+- [ ] Khi có TOPCAT / SCD-HeFT: kiểm chứng theo nhóm EF (bảo tồn vs giảm); cân nhắc mở lại Giai đoạn 7 (Cox) với thời gian đến tử vong.
+
+**12.3. Paper**
+- [ ] Thêm cohort kiểm chứng ngoài thứ hai vào Methods/Results; trích dẫn MIMIC-III (Johnson et al., Sci Data 2016) và PhysioNet theo yêu cầu của DUA; câu cảm ơn BioLINCC theo mẫu bắt buộc nếu dùng dữ liệu thử nghiệm.
+- [ ] Nêu khác biệt bối cảnh: MIMIC-III là BN ICU (Mỹ, 2001–2012), UCI là BN suy tim nặng ngoại trú, Zigong là BN nhập viện (Trung Quốc).
+
+**Nghiệm thu Giai đoạn 12:** script dựng cohort chạy lại được từ dữ liệu gốc; test trên dữ liệu giả lập; CI chỉ dùng dữ liệu giả lập; mọi kết quả công bố là số liệu tổng hợp; không có file dữ liệu nào trong `git ls-files`.
+
 ### QUYẾT ĐỊNH CẦN NHÓM CHỐT
 1. ~~Có đưa `docs/paper/` lên repo công khai không~~ → **Đã chốt (2026-10-14): không.** `docs/paper/` nằm trong `.gitignore`, chia sẻ nội bộ.
 2. Hội nghị mục tiêu và giới hạn số trang → có làm 9.4, 9.5 không.
 3. Danh sách tác giả, đơn vị.
+4. (v1.3) Thành viên nào xin quyền MIMIC-III và BioLINCC; có chờ dữ liệu BioLINCC trước khi nộp bài không.
 
 ---
 
@@ -258,3 +305,6 @@ Nguồn: `docs/CODEX_REVIEW.md` (2026-10-14).
 - Van Calster B, et al. *Calibration: the Achilles heel of predictive analytics.* BMC Med 2019;17:230. [DOI](https://doi.org/10.1186/s12916-019-1466-7) — cập nhật mô hình bằng hiệu chỉnh intercept / slope trước khi dùng ở nơi mới.
 - Nadeau C, Bengio Y. *Inference for the generalization error.* Mach Learn 2003;52:239–281 — kiểm định t hiệu chỉnh cho CV lặp.
 - `docs/CODEX_REVIEW.md` — Codex review 2026-10-14.
+- Johnson AEW, et al. *MIMIC-III, a freely accessible critical care database.* Sci Data 2016;3:160035. [DOI](https://doi.org/10.1038/sdata.2016.35).
+- Dryad: *Prediction model of in-hospital mortality in ICU patients with heart failure (MIMIC-III).* [doi:10.5061/dryad.0p2ngf1zd](https://datadryad.org/dataset/doi:10.5061/dryad.0p2ngf1zd).
+- NHLBI BioLINCC: [TOPCAT](https://biolincc.nhlbi.nih.gov/studies/topcat), [SCD-HeFT](https://biolincc.nhlbi.nih.gov/studies/scd_heft), [HF-ACTION](https://biolincc.nhlbi.nih.gov/studies/hf_action), [DIG](https://biolincc.nhlbi.nih.gov/studies/dig).

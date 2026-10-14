@@ -2,7 +2,7 @@
 
 **Dự án:** Dự đoán tử vong ở bệnh nhân suy tim bằng Machine Learning
 **Repo:** https://github.com/fossbk-spec/heart-failure
-**Kế hoạch gốc:** [`ACTION_PLAN_FOR_CLAUDE.md`](ACTION_PLAN_FOR_CLAUDE.md) v1.2, Giai đoạn 8–11
+**Kế hoạch gốc:** [`ACTION_PLAN_FOR_CLAUDE.md`](ACTION_PLAN_FOR_CLAUDE.md) v1.3, Giai đoạn 8–12
 **Tài liệu nên đọc trước:**
 - [`PROGRESS_REPORT.md`](PROGRESS_REPORT.md): những gì đã làm;
 - [`CODEX_REVIEW.md`](CODEX_REVIEW.md): các lỗi cần sửa;
@@ -55,6 +55,7 @@ Tài liệu này là **gợi ý**: nó chỉ ra cần làm gì, gợi ý hướn
 | SV2 | 8.2, 8.5 (thống kê so sánh, CLI, test) | Không |
 | SV3 | 8.3, 8.6, 9.3 (stacking, odds ratio, độ nhạy) | 9.3 cần |
 | SV4 | 9.2, Giai đoạn 10 (phân tích gộp, paper, truy vết số liệu) | 9.2 cần |
+| SV có quyền MIMIC-III | Giai đoạn 12.1–12.2 (v1.3) | Cần MIMIC-III |
 | Cả nhóm | Giai đoạn 11 (Codex review lại, nghiệm thu chung) | — |
 
 **Thứ tự phụ thuộc:**
@@ -202,6 +203,40 @@ Tài liệu này là **gợi ý**: nó chỉ ra cần làm gì, gợi ý hướn
 - **9.5:** delta adjustment. Sau khi điền LVEF, cộng thêm δ ∈ {−10, −5, +5, +10} vào các giá trị điền, rồi xem AUC trong Zigong thay đổi thế nào.
 
 ---
+
+## 2b. GIAI ĐOẠN 12 — Thêm bộ dữ liệu kiểm chứng ngoài (v1.3)
+
+Làm song song với Giai đoạn 8–10, vì thủ tục cấp quyền mất nhiều tuần.
+
+### 12.0. Xin quyền truy cập (làm ngay, cả nhóm)
+- **MIMIC-III:** hoàn thành khóa CITI "Data or Specimens Only Research", nâng tài khoản PhysioNet lên credentialed nếu chưa có, rồi ký DUA của MIMIC-III.
+- **BioLINCC (TOPCAT, SCD-HeFT):** đăng ký tài khoản, xin thư miễn IRB của trường, nộp đơn kèm DUA.
+- **Tự kiểm tra:** mỗi người đăng nhập được trang MIMIC-III trên PhysioNet và tải được một file nhỏ như `PATIENTS.csv.gz`.
+
+### 12.1. Dựng cohort MIMIC-III (một SV có quyền MIMIC)
+**Gợi ý:**
+- Dựng cohort từ dữ liệu gốc, không dùng file Dryad để huấn luyện. File Dryad chỉ dùng để đối chiếu số liệu tổng hợp.
+- Mỗi bệnh nhân chỉ lấy lần nhập ICU đầu tiên. MIMIC có `subject_id`, nên khác với Zigong, ở đây gom nhóm theo bệnh nhân được.
+- LVEF lấy từ báo cáo siêu âm tim bằng biểu thức chính quy (ví dụ "EF 35%", "LVEF 30-35%"). Khoảng giá trị thì lấy điểm giữa. Ghi lại tỷ lệ trích được.
+- Nhãn 90 ngày tính từ `dod` và ngày nhập viện. Tuổi trên 89 trong MIMIC đã bị dịch đi, nên gán vào nhóm ≥ 90.
+
+**Tự kiểm tra:**
+- Số lượt nhập viện và tỷ lệ tử vong nội viện gần với Zhou/Li et al. (≈ 1.177 lượt, 13,5%). Nếu lệch hơn 10% phải giải thích được vì sao.
+- Kiểm tra thủ công 20 báo cáo siêu âm ngẫu nhiên: LVEF trích bằng regex phải khớp với văn bản. Việc này chỉ làm trên máy có quyền MIMIC, và tuyệt đối không dán báo cáo vào công cụ AI.
+
+**Nghiệm thu:**
+- [ ] `scripts/build_mimic3_hf_cohort.py` chạy lại được từ dữ liệu gốc.
+- [ ] Hàm `harmonize_mimic3()` có test trên dữ liệu giả lập.
+- [ ] Bảng mô tả cohort chỉ chứa số liệu tổng hợp.
+
+### 12.2. Phân tích
+- Kiểm chứng ngoài UCI → MIMIC-III. Dùng lại `src/external_validation.py` và phần hiệu chỉnh ở 9.1.
+- Leave-one-cohort-out trên 3 cohort: huấn luyện trên 2 cohort, kiểm chứng trên cohort còn lại.
+- Chạy lại 7 kịch bản xử lý LVEF.
+
+**Câu hỏi hiểu bài:**
+- Vì sao kết quả trên bệnh nhân ICU ở Mỹ không thay được kết quả trên Zigong?
+- Leave-one-cohort-out trả lời câu hỏi gì mà CV trên dữ liệu gộp không trả lời được?
 
 ## 3. GIAI ĐOẠN 10 — Cập nhật kết quả vào bài báo (SV4, cả nhóm review)
 
