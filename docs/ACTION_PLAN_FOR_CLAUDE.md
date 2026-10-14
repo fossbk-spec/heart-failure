@@ -2,11 +2,24 @@
 ## Dự án: Heart Failure Mortality Prediction using Big Data & Machine Learning
 **Đường dẫn thư mục dự án:** `D:\Antigravity\heart-failure`
 **Repo:** https://github.com/fossbk-spec/heart-failure
-**Phiên bản:** v1.1 (2026-10-13) — sửa đổi từ v1.0 sau khi review đối chiếu với mã nguồn và tài liệu gốc
+**Phiên bản:** v1.2 (2026-10-14). v1.1 (2026-10-13) đã sửa v1.0 sau khi đối chiếu với mã nguồn; v1.2 bổ sung các Giai đoạn 8–11 theo kết quả Codex review và phân tích gộp UCI + Zigong.
+**Hướng dẫn cho sinh viên:** [`STUDENT_GUIDE_v1.2.md`](STUDENT_GUIDE_v1.2.md)
 
 ---
 
-## 0. THAY ĐỔI SO VỚI v1.0
+## 0a. THAY ĐỔI CỦA v1.2 SO VỚI v1.1
+
+| # | v1.1 | v1.2 | Lý do |
+|---|---|---|---|
+| 1 | Giai đoạn 2 kết luận "2 biến không kém 11 biến" | Chỉ kết luận "điểm ước lượng tương đương hoặc cao hơn" | Codex review: CI t trên 5 fold phụ thuộc nhau quá hẹp; CI chứa 0 không chứng minh được non-inferiority |
+| 2 | Giai đoạn 4 mục 3: "Cohort B: bỏ LVEF, thêm biến chỉ báo thiếu" | Cohort B chỉ bỏ LVEF; biến chỉ báo thiếu được đánh giá riêng ở Giai đoạn 4b | Mã nguồn không thêm biến chỉ báo; Giai đoạn 4b cho thấy biến này không giúp |
+| 3 | (chưa có) | Giai đoạn 4b: gộp UCI + Zigong, so sánh 7 cách xử lý LVEF thiếu | Yêu cầu của nhóm (2026-10-14) |
+| 4 | Giai đoạn 5: biểu đồ + `references.bib` | Phần lớn đã làm trong bản thảo paper (`docs/paper/`); phần còn lại chuyển vào Giai đoạn 10 | Paper IEEE đã có Hình 1–2 và 27 tài liệu tham khảo |
+| 5 | Giai đoạn 6 (RobustScaler), 7 (Cox) | **Hoãn** | Không ảnh hưởng các kết luận hiện tại |
+| 6 | (chưa có) | Giai đoạn 8–11: sửa theo Codex review → bổ sung phân tích → cập nhật paper → Codex review lại | Codex review 2026-10-14: 0 nghiêm trọng, 3 lớn, 7 nhỏ (`docs/CODEX_REVIEW.md`) |
+| 7 | Hiệu chỉnh trên Zigong theo thời gian | Chia ngẫu nhiên phân tầng, lặp lại | Zigong không có ngày nhập viện (chỉ có `dischargeDay`, `visit.times`) |
+
+## 0. THAY ĐỔI CỦA v1.1 SO VỚI v1.0
 
 | # | v1.0 | v1.1 | Lý do |
 |---|---|---|---|
@@ -71,7 +84,7 @@
   - `compare`: grouped CV trên train+val, **cùng các fold** cho cả hai tập đặc trưng → hiệu số theo cặp (minimal − all), trung bình, độ lệch chuẩn, CI 95% (t, df = k−1; xấp xỉ vì các fold không độc lập).
   - Ghi `reports/minimal_vs_full_feature_comparison.csv`: Recall, Specificity, PR-AUC, ROC-AUC, MCC, Brier, F2.
 - [x] Test `tests/test_feature_sets.py`.
-- **Kết quả (paired grouped CV 5 fold trên train+val, Recall ≥ 0.80):** mô hình 2 biến không kém mô hình 11 biến; ROC-AUC RF 0.78 → 0.83, Extra Trees 0.75 → 0.83, GB 0.74 → 0.78 (CI hiệu số chỉ loại trừ 0 ở GB). Ủng hộ Chicco & Jurman (2020) về hướng, chưa đủ mạnh về thống kê với 239 BN.
+- **Kết quả (paired grouped CV 5 fold trên train+val, Recall ≥ 0.80):** mô hình 2 biến có điểm ước lượng tương đương hoặc cao hơn mô hình 11 biến (v1.2: không kết luận "không kém", xem Giai đoạn 8.2); ROC-AUC RF 0.78 → 0.83, Extra Trees 0.75 → 0.83, GB 0.74 → 0.78 (CI hiệu số chỉ loại trừ 0 ở GB). Ủng hộ Chicco & Jurman (2020) về hướng, chưa đủ mạnh về thống kê với 239 BN.
 
 ### GIAI ĐOẠN 3: TIẾP NHẬN & ĐỒNG BỘ DỮ LIỆU ZIGONG (cần dữ liệu)
 **Kết cục đã chọn (so sánh các phương án):**
@@ -125,7 +138,7 @@ Quy tắc nhãn UCI ở mốc H ngày: `1` nếu `DEATH_EVENT=1` và `time ≤ H
 - [x] `scripts/run_external_validation.py` + `src/external_validation.py` (phương án A — chỉ chiều UCI → Zigong):
   1. Huấn luyện trên UCI (tập đặc trưng chung, nhãn 90 ngày, không SMOTE) → đánh giá trên Zigong. Chiều ngược lại bị loại (Zigong chỉ có 42 ca tử vong).
   2. ~~Mô hình nội bộ Zigong~~ — bỏ theo phương án A (không đủ ca tử vong, không có ID bệnh nhân).
-  3. **Cohort A**: chỉ BN có LVEF (thiếu không ngẫu nhiên → báo cáo thiên lệch chọn mẫu). **Cohort B**: bỏ LVEF, thêm biến chỉ báo thiếu; không nội suy 68% LVEF.
+  3. **Cohort A**: chỉ BN có LVEF (thiếu không ngẫu nhiên → báo cáo thiên lệch chọn mẫu). **Cohort B**: bỏ LVEF; không nội suy 68% LVEF. (v1.2: biến chỉ báo thiếu được đánh giá ở Giai đoạn 4b.)
   4. Báo cáo khác biệt quần thể (Zigong: tuổi trung vị 77, 58% nữ; UCI: tuổi TB 61, 35% nữ) và lệch hiệu chuẩn.
 - [x] Số ca tử vong 90 ngày ở Zigong = 42 (< ~100): báo cáo CI bootstrap, không kết luận mạnh.
 
@@ -143,28 +156,97 @@ Quy tắc nhãn UCI ở mốc H ngày: `1` nếu `DEATH_EVENT=1` và `time ≤ H
 - Hiệu chuẩn thất bại: dự đoán gấp ~16 lần nguy cơ thực (calibration-in-the-large ≈ −3.4). Sau khi hiệu chỉnh intercept tại chỗ, Brier chỉ bằng mức không có kỹ năng → không được dùng trên quần thể mới khi chưa hiệu chỉnh lại.
 - Kết quả nhất quán ở mốc 28 / 180 ngày và tập con giống UCI.
 
-### GIAI ĐOẠN 5: BIỂU ĐỒ & TRÍCH DẪN
+### GIAI ĐOẠN 4b: GỘP UCI + ZIGONG, XỬ LÝ LVEF BỊ THIẾU (đã xong, 2026-10-14)
+- [x] `src/pooled_missing.py`, `scripts/run_pooled_missing.py`, `make pooled-missing`, `tests/test_pooled_missing.py` (16 test, tổng 188).
+- [x] 7 kịch bản: complete case (bỏ dòng thiếu LVEF, 891 dòng); bỏ cột LVEF (2,264 dòng); điền median / MICE / KNN; median và MICE + biến chỉ báo thiếu. Mỗi kịch bản chạy với và không có biến cohort.
+- [x] CV phân tầng 5 fold × 3 lần lặp (phân tầng theo cohort × kết cục); tiền xử lý chỉ fit trên fold huấn luyện; log1p chọn cột theo **tên**.
+- [x] Đo độ chính xác khi điền LVEF: che LVEF đã đo ở Zigong, điền lại, so với giá trị thật.
+
+**Kết quả (tử vong 90 ngày, không có biến cohort; khoảng giá trị qua LR / RF / ET):**
+
+| Kịch bản | Số dòng | AUC trong Zigong (tất cả / có LVEF) | AUC trong UCI |
+|---|---|---|---|
+| Bỏ dòng thiếu LVEF | 891 | – / 0.74–0.82 | 0.62–0.65 |
+| Bỏ cột LVEF | 2,264 | 0.72–0.76 / 0.77–0.84 | 0.51–0.55 |
+| Điền median / MICE / KNN | 2,264 | 0.70–0.75 / 0.76–0.81 | 0.61–0.64 |
+| Điền + biến chỉ báo thiếu | 2,264 | 0.64–0.71 / 0.78–0.80 | 0.62–0.64 |
+
+- AUC trên dữ liệu gộp (0.80–0.89) bị thổi phồng vì hai cohort chênh 13 lần về tỷ lệ tử vong → chỉ so sánh AUC trong từng cohort.
+- Điền LVEF: MAE 10.8–11.9 điểm EF, tương quan với giá trị thật r ≈ 0.2, độ phân tán bằng 34–44% thực tế → gần như bịa dữ liệu, không cải thiện AUC.
+- LVEF quan trọng với UCI (bỏ LVEF: AUC trong UCI 0.63 → 0.53). Biến chỉ báo thiếu không giúp (tử vong 2.3% không đo vs 1.6% có đo).
+- Hiệu chuẩn trên Zigong: CITL −0.4 đến −1.3 (−0.05 đến −0.5 khi có biến cohort) — là kiểm chứng nội bộ, không phải khả năng chuyển giao.
+- **Khuyến nghị:** bỏ cột LVEF cho mô hình áp dụng mọi lượt nhập viện; complete case khi cần LVEF; điền giá trị chỉ là phân tích độ nhạy.
+
+### GIAI ĐOẠN 5: BIỂU ĐỒ & TRÍCH DẪN (v1.2: phần lớn đã làm trong `docs/paper/`, phần còn lại chuyển sang Giai đoạn 10)
 - [ ] `scripts/generate_clinical_figures.py` (300 DPI, `reports/figures/`): calibration curve (LR / RF / ETC, có và không SMOTE) + calibration slope/intercept + Brier; đường PR; SHAP summary & bar.
 - [ ] `data/SSoT_pdf_references/references.bib`: gộp 2 bộ tài liệu, có DOI. Xác minh với PDF:
   - Sun 2022: 202 + 78 là số **nghiên cứu**; con số "97% High Risk of Bias" không có trong abstract.
   - Zhang 2021: abstract ghi 166 thuộc tính, PhysioNet ghi 168.
   - Kapelios 2023: xác minh tên tạp chí.
 
-### GIAI ĐOẠN 6: ROBUSTSCALER (ưu tiên thấp)
+### GIAI ĐOẠN 6: ROBUSTSCALER (ưu tiên thấp — v1.2: HOÃN)
 - [ ] `make_preprocessor(scaler="standard" | "robust")`, mặc định `standard`. Lợi ích nhỏ vì đã có log1p.
 
-### GIAI ĐOẠN 7: PHÂN TÍCH SỐNG CÒN (tùy chọn, độ nhạy)
+### GIAI ĐOẠN 7: PHÂN TÍCH SỐNG CÒN (tùy chọn, độ nhạy — v1.2: HOÃN)
 - [ ] Cox PH (lifelines hoặc scikit-survival), C-index, AUC phụ thuộc thời gian tại 90 ngày; `time` là thời gian kết cục.
+
+### GIAI ĐOẠN 8: SỬA THEO CODEX REVIEW (≈ 1 ngày; chỉ bước nghiệm thu cần Zigong)
+Nguồn: `docs/CODEX_REVIEW.md` (2026-10-14).
+
+| # | Việc | Codex | Ưu tiên | File chính |
+|---|---|---|---|---|
+| 8.1 | Thay Newton thuần trong `_fit_logistic` bằng cách giải ổn định: intercept-only dùng tìm nghiệm có chặn (`scipy.optimize.brentq`); slope dùng Newton có line search hoặc `scipy.optimize.minimize`; trả về trạng thái hội tụ; phát hiện tách hoàn toàn (separation) | Lớn #3 | Cao | `src/external_validation.py` |
+| 8.2 | So sánh 2 biến vs 11 biến: CV lặp 10×5 + kiểm định t hiệu chỉnh Nadeau–Bengio (hoặc bootstrap theo bệnh nhân lặp lại toàn bộ quy trình fit); bỏ CI t thường; diễn đạt mô tả | Lớn #2 | Cao | `src/train.py` |
+| 8.3 | Stacking: truyền danh sách fold nội bộ chia theo bệnh nhân vào `StackingClassifier(cv=...)`, hoặc báo lỗi khi `patient_id` trùng lặp | Lớn #1 | Trung bình | `src/models.py`, `src/train.py` |
+| 8.4 | `make_preprocessor`: chọn cột log1p theo tên (như `pooled_missing`); `validate_model`: cohort áp dụng rỗng → trả NaN, không lỗi | Nhỏ #4, #5 | Trung bình | `src/preprocessing.py`, `src/external_validation.py` |
+| 8.5 | Giới hạn `--models` của kiểm chứng ngoài về LR/RF/ET; test spy dùng index hai cohort không trùng nhau và kiểm tra cả dữ liệu chọn ngưỡng; sửa `KeyError: 'f2'` khi `--beta` ≠ 2 | Nhỏ #6, #7, #8 | Trung bình | `scripts/run_external_validation.py`, `tests/test_external_validation.py`, `src/train.py` |
+| 8.6 | CI odds ratio: ma trận thông tin có cả intercept; README/báo cáo mô tả đúng phạm vi của `assert_no_fit_on_holdout` và `verify_zero_data_leakage` | Nhỏ #9, #10 | Thấp | `src/explainability.py`, `README.md` |
+
+**Nghiệm thu Giai đoạn 8:**
+- [ ] Mỗi mục có ít nhất một test tái hiện đúng kịch bản lỗi Codex mô tả (fail trước khi sửa, pass sau khi sửa).
+- [ ] Chạy lại `make train-recall80`, `make compare-features`, `make external-validation`, `make pooled-missing`; lập bảng **số cũ → số mới** cho mọi con số có trong README và paper.
+- [ ] Toàn bộ test pass; `ruff check src tests scripts` sạch.
+
+### GIAI ĐOẠN 9: BỔ SUNG PHÂN TÍCH (≈ 1–2 ngày, cần Zigong)
+| # | Việc | Ưu tiên |
+|---|---|---|
+| 9.1 | **Hiệu chỉnh trên một phần Zigong, đánh giá trên phần giữ lại.** Chia ngẫu nhiên phân tầng 50/50, lặp ≥ 200 lần (Zigong không có ngày nhập viện). So sánh: (a) không hiệu chỉnh, (b) chỉ intercept, (c) intercept + slope (logistic recalibration), (d) huấn luyện lại trên UCI + phần Zigong. Báo cáo AUC, CITL, slope, Brier trên phần giữ lại (trung vị và khoảng 2.5–97.5%) | Cao |
+| 9.2 | Phân tích gộp: CV lặp 10×5; CI bootstrap cho AUC trong từng cohort | Cao |
+| 9.3 | Độ nhạy: chỉ giữ lượt nhập viện đầu tiên (`visit.times == 1`) cho kiểm chứng ngoài và phân tích gộp | Trung bình |
+| 9.4 | (Tuỳ chọn) Huấn luyện trên Zigong (8 biến, không LVEF) → kiểm chứng trên UCI; chỉ mang tính tham khảo (42 ca tử vong) | Thấp |
+| 9.5 | (Tuỳ chọn) Điền LVEF theo giả định thiếu không ngẫu nhiên: dịch giá trị điền ±5 / ±10 điểm EF (delta adjustment) | Thấp |
+
+**Nghiệm thu:** module + script + test trên dữ liệu giả lập; kết quả chỉ ở dạng tổng hợp trong `reports/` (git-ignored); cập nhật README.
+
+### GIAI ĐOẠN 10: CẬP NHẬT PAPER (≈ 1 ngày)
+- [x] Bản nháp mục "Pooled Analysis and Missing LVEF" (Methods + Results, Table V) với kết quả Giai đoạn 4b — đã thêm ngày 2026-10-14.
+- [ ] Kết quả 9.1 → Discussion chuyển từ "cần hiệu chỉnh" thành "hiệu chỉnh cải thiện được bao nhiêu".
+- [ ] Thay mọi số liệu theo bảng số cũ → số mới của Giai đoạn 8; viết lại mục so sánh 2 biến theo 8.2.
+- [ ] Checklist TRIPOD (phụ lục), mục Data availability (Zigong theo DUA), cân hai cột trang cuối, ≤ 6 trang.
+- [ ] Xác minh lại các tài liệu tham khảo không có trên PubMed (số trang Ishaq 2021, các bài ML, WHO 2011).
+- [ ] Mọi con số trong paper truy được về một file trong `reports/` (bảng truy vết `docs/paper/NUMBERS.md`).
+
+### GIAI ĐOẠN 11: CODEX REVIEW LẠI + COMMIT (≈ 0.5 ngày)
+- [ ] Codex review code mới/đã sửa trên bản clone sạch **không có dữ liệu Zigong**; gửi thêm các CSV kết quả tổng hợp để đối chiếu với paper.
+- [ ] Xử lý mọi phát hiện mức Lớn; ghi các phát hiện còn lại vào `docs/CODEX_REVIEW.md`.
+- [ ] Commit theo từng giai đoạn, không có dòng đồng tác giả AI; CI xanh.
+
+### QUYẾT ĐỊNH CẦN NHÓM CHỐT
+1. ~~Có đưa `docs/paper/` lên repo công khai không~~ → **Đã chốt (2026-10-14): không.** `docs/paper/` nằm trong `.gitignore`, chia sẻ nội bộ.
+2. Hội nghị mục tiêu và giới hạn số trang → có làm 9.4, 9.5 không.
+3. Danh sách tác giả, đơn vị.
 
 ---
 
 ## 3. CHECKLIST NGHIỆM THU
-- [ ] Toàn bộ test PASS, số test ≥ 105; `ruff check` sạch; CI GitHub xanh.
+- [ ] Toàn bộ test PASS, số test ≥ 188 (v1.2); `ruff check src tests scripts` sạch; CI GitHub xanh.
 - [ ] `python -m src.train --models logistic_regression random_forest extra_trees mlp` chạy thành công, ghi `reports/model_comparison.csv`.
 - [ ] `python -m src.train --feature-set compare` ghi `reports/minimal_vs_full_feature_comparison.csv`.
 - [ ] `tests/test_data_leakage.py` vẫn PASS; có test cho mọi bước fit mới (RobustScaler, tập đặc trưng).
 - [ ] Không có file Zigong nào trong `git ls-files`.
 - [ ] `reports/figures/` có calibration, PR, SHAP (Giai đoạn 5).
+- [ ] (v1.2) Mọi phát hiện Lớn của Codex đã sửa, có test; bảng số cũ → số mới đã lập.
+- [ ] (v1.2) Mọi con số trong paper truy được về `reports/` (`docs/paper/NUMBERS.md`).
 
 ---
 
@@ -173,3 +255,6 @@ Quy tắc nhãn UCI ở mốc H ngày: `1` nếu `DEATH_EVENT=1` và `time ≤ H
 - PhysioNet *heart-failure-zigong* v1.3: restricted access, PhysioNet Restricted Health Data License 1.5.0.
 - Sun Z, et al. *Comparing Machine Learning Models and Statistical Models for Predicting Heart Failure Events.* Front Cardiovasc Med 2022;9:812276. [DOI](https://doi.org/10.3389/fcvm.2022.812276) — C-index tử vong: ML 0.777 vs thống kê 0.733; ML không vượt trội nhất quán.
 - Số liệu nhãn UCI theo mốc thời gian: tính trực tiếp từ `data/raw/heart_failure_clinical_records_dataset.csv`.
+- Van Calster B, et al. *Calibration: the Achilles heel of predictive analytics.* BMC Med 2019;17:230. [DOI](https://doi.org/10.1186/s12916-019-1466-7) — cập nhật mô hình bằng hiệu chỉnh intercept / slope trước khi dùng ở nơi mới.
+- Nadeau C, Bengio Y. *Inference for the generalization error.* Mach Learn 2003;52:239–281 — kiểm định t hiệu chỉnh cho CV lặp.
+- `docs/CODEX_REVIEW.md` — Codex review 2026-10-14.

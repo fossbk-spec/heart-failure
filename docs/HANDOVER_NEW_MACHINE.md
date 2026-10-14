@@ -9,6 +9,7 @@ Toàn bộ mã nguồn, tài liệu, notebook và kế hoạch đã nằm trên 
 | `.venv/` | Môi trường ảo, phụ thuộc vào từng máy | `make setup` (mục 2) |
 | `data/raw/zigong/dat.csv` | Dữ liệu hạn chế, bị cấm chia sẻ lại theo DUA | Tự tải bằng tài khoản PhysioNet (mục 3) |
 | `reports/*.csv`, `*.txt`, `figures/*.png`, `eda/`, `recall80/`, `external_validation/` | Kết quả sinh ra từ mã nguồn | Chạy lại (mục 4) |
+| `docs/paper/` (bản thảo bài báo, script build) | Giữ riêng tư cho đến khi nộp bài | Lấy từ kênh nội bộ của nhóm |
 | `data/SSoT_pdf_references/*.pdf` | Bản quyền thuộc nhà xuất bản | Tải lại theo `data/SSoT_pdf_references/README.md` |
 
 ## 2. Cài đặt môi trường

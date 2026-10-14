@@ -15,6 +15,7 @@ reports/*.txt
 reports/eda/
 reports/recall80/
 reports/external_validation/
+reports/pooled_missing/
 data/raw/zigong/
 !reports/README.md
 *.joblib
@@ -42,3 +43,9 @@ env/
 .DS_Store
 .vscode/
 .idea/
+
+# --- Office lock files ---
+~$*
+
+# --- Paper draft: kept private until submission (shared within the team only) ---
+docs/paper/

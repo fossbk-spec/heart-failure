@@ -22,6 +22,9 @@
 | Giai đoạn 3 — Tiếp nhận và đồng bộ dữ liệu Zigong | Hoàn thành |
 | Giai đoạn 4 — Kiểm chứng ngoài UCI → Zigong (phương án A) | Hoàn thành |
 | Báo cáo tiến độ, script tải Zigong, hướng dẫn chuyển máy | Hoàn thành |
+| Codex review code; bản thảo paper IEEE (có Table V: phân tích gộp) | Hoàn thành (chưa commit) |
+| Kế hoạch v1.2 (Giai đoạn 8–11) và hướng dẫn cho sinh viên | Hoàn thành (chưa commit) |
+| Gộp UCI + Zigong, so sánh cách xử lý LVEF bị thiếu | Hoàn thành (chưa commit) |
 | Giai đoạn 5 — Biểu đồ 300 DPI và `references.bib` | Chưa làm |
 | Giai đoạn 6 — Tuỳ chọn RobustScaler | Chưa làm |
 | Giai đoạn 7 — Phân tích sống còn (Cox, tuỳ chọn) | Chưa làm |
@@ -182,6 +185,18 @@
   - cách cài đặt môi trường và xử lý các lỗi đã gặp (Avast/pip, `imblearn` của Anaconda, kernel Jupyter);
   - cách tái tạo kết quả và các quy ước làm việc.
 
+### 4.10. Gộp hai bộ dữ liệu và xử lý giá trị thiếu (2026-10-14)
+- **Module và script:** `src/pooled_missing.py`, `scripts/run_pooled_missing.py`, `make pooled-missing`, cùng 16 test mới (tổng cộng 188 test).
+- **Dữ liệu:** gộp 256 bệnh nhân UCI và 2.008 lượt nhập viện Zigong, nhãn tử vong 90 ngày, tổng cộng 111 ca tử vong.
+- **7 kịch bản xử lý LVEF:**
+  - bỏ ví dụ: chỉ giữ dòng có LVEF (complete case);
+  - bỏ đặc trưng: bỏ cột LVEF;
+  - điền giá trị: median, MICE, KNN, và median/MICE kèm biến chỉ báo thiếu.
+  - Mỗi kịch bản chạy với và không có biến chỉ báo nguồn dữ liệu (cohort).
+- **Đánh giá:** CV phân tầng 5-fold, lặp 3 lần, phân tầng theo nguồn × kết cục. Mọi bước tiền xử lý chỉ học trên fold huấn luyện.
+  - Báo cáo ROC-AUC trong từng nguồn dữ liệu, vì AUC trên dữ liệu gộp bị thổi phồng: hai nguồn chênh nhau 13 lần về tỉ lệ tử vong.
+- **Kiểm tra độ chính xác của việc điền LVEF:** che các giá trị LVEF đã đo ở Zigong rồi điền lại, so với giá trị thật.
+
 ---
 
 ## 5. Kết quả
@@ -254,6 +269,29 @@ Grouped CV trên train+val (trung bình ± độ lệch chuẩn qua 5 fold):
 | 28 ngày | 0,63 | 0,76 | −1,6 đến −3,0 |
 | 180 ngày | 0,66 | 0,76 | −3,5 đến −4,4 |
 | Tập con giống UCI (90 ngày) | 0,64 | 0,78 | −2,6 đến −3,5 |
+
+### 5.5b. Gộp UCI + Zigong: xử lý LVEF bị thiếu (tử vong 90 ngày)
+
+| Kịch bản (không có biến cohort) | Số dòng | AUC trong Zigong (tất cả / có LVEF) | AUC trong UCI |
+|---|---|---|---|
+| Bỏ dòng thiếu LVEF (complete case) | 891 | – / 0,74–0,82 | 0,62–0,65 |
+| Bỏ cột LVEF | 2.264 | 0,72–0,76 / 0,77–0,84 | 0,51–0,55 |
+| Điền median | 2.264 | 0,70–0,75 / 0,77–0,79 | 0,61–0,64 |
+| Điền MICE | 2.264 | 0,71–0,75 / 0,77–0,78 | 0,63–0,64 |
+| Điền KNN | 2.264 | 0,72–0,74 / 0,76–0,81 | 0,62–0,64 |
+| Điền + biến chỉ báo thiếu | 2.264 | 0,64–0,71 / 0,78–0,80 | 0,62–0,64 |
+
+*Khoảng giá trị là qua 3 mô hình LR, RF, Extra Trees. Nhóm Zigong có LVEF chỉ có 10 ca tử vong.*
+
+- **Điền LVEF gần như là bịa dữ liệu:**
+  - với các giá trị LVEF đã đo, MICE và KNN điền lại sai trung bình 10,8–11,0 điểm EF, median sai 11,9 điểm;
+  - tương quan giữa giá trị điền và giá trị thật chỉ r ≈ 0,2;
+  - độ phân tán của giá trị điền chỉ bằng 0,34–0,44 lần độ phân tán thật.
+- **Điền giá trị không giúp gì trong Zigong:** AUC không cao hơn kịch bản bỏ hẳn cột LVEF.
+- **LVEF quan trọng với UCI:** bỏ cột này làm AUC trong UCI giảm từ khoảng 0,63 xuống 0,53.
+- **Biến chỉ báo thiếu không giúp:** tỉ lệ tử vong ở nhóm không đo LVEF là 2,3%, gần bằng 1,6% ở nhóm có đo.
+- **Hiệu chuẩn tốt hơn nhiều so với kiểm chứng ngoài:** CITL −0,4 đến −1,3, và −0,05 đến −0,5 khi có biến cohort (so với −3,4). Lý do là mô hình đã thấy kết cục của Zigong khi huấn luyện, nên đây là kiểm chứng nội bộ, không phải khả năng chuyển giao.
+- **Chưa gộp được lượt nhập viện lặp lại** (7%), nên kết quả CV hơi lạc quan.
 
 ### 5.6. Diễn giải
 1. **Khả năng phân biệt chuyển giao ở mức khiêm tốn.** AUC trên Zigong gần với AUC nội bộ của chính mô hình trên UCI ở cùng mốc 90 ngày (0,64–0,73). Như vậy mô hình không bị sụp đổ khi sang Zigong, nhưng bản thân nó vốn đã yếu.
