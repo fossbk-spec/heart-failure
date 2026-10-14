@@ -46,6 +46,27 @@ python scripts/download_zigong.py --verify-only   # 2.008 dòng, 42 ca tử vong
 - Không commit dữ liệu, không đưa lên CI, Colab hay Kaggle công khai.
 - Nếu chép file trực tiếp giữa các máy, chỉ dùng phương tiện được mã hoá hoặc có kiểm soát quyền truy cập. Sau khi chép, chạy lại `--verify-only` để kiểm tra.
 
+## 3b. Dữ liệu MIMIC-III (Giai đoạn 12)
+
+Cần tài khoản PhysioNet đã xác thực, khóa CITI "Data or Specimens Only Research" và DUA của MIMIC-III v1.4.
+
+- **Chỉ tải 8 bảng** vào `data/raw/mimic3/` (git bỏ qua): `PATIENTS`, `ADMISSIONS`, `ICUSTAYS`, `DIAGNOSES_ICD`, `D_ICD_DIAGNOSES`, `LABEVENTS`, `D_LABITEMS`, `NOTEEVENTS`. Giữ nguyên dạng `.csv.gz`, không giải nén.
+- **`NOTEEVENTS` và `LABEVENTS`:** nên lọc trên BigQuery (`physionet-data`) và chỉ tải phần kết quả.
+- **Tải bằng aria2** (`winget install aria2.aria2`):
+  ```bash
+  aria2c -U "Wget/1.21.4" -x 8 -s 8 -c --netrc-path=C:/Users/<user>/.netrc -d data/raw/mimic3 \
+    https://physionet.org/files/mimiciii/1.4/NOTEEVENTS.csv.gz
+  ```
+  - Thiếu `-U "Wget/..."` thì PhysioNet trả về 403.
+  - `.netrc` chỉ có một dòng: `machine physionet.org login <username> password <mật-khẩu>`. Username lấy từ địa chỉ trang profile, không dùng email.
+  - Trên Git Bash phải viết đường dẫn bằng `/`, không dùng `\`.
+- **Kiểm tra đăng nhập** (chỉ xem mã trạng thái):
+  ```bash
+  /c/Windows/System32/curl.exe -s -o NUL -w '%{http_code}' -A "Wget/1.21.4" \
+    --netrc-file C:/Users/<user>/.netrc https://physionet.org/files/mimiciii/1.4/
+  ```
+  Kết quả 200 là tải được, 401 là sai thông tin đăng nhập, 403 là chưa có quyền. Dùng `curl.exe` của Windows để tránh lỗi chứng chỉ do Avast.
+
 ## 4. Tái tạo kết quả
 
 ```bash

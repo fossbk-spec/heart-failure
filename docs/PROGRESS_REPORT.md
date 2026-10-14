@@ -22,9 +22,10 @@
 | Giai đoạn 3 — Tiếp nhận và đồng bộ dữ liệu Zigong | Hoàn thành |
 | Giai đoạn 4 — Kiểm chứng ngoài UCI → Zigong (phương án A) | Hoàn thành |
 | Báo cáo tiến độ, script tải Zigong, hướng dẫn chuyển máy | Hoàn thành |
-| Codex review code; bản thảo paper IEEE (có Table V: phân tích gộp) | Hoàn thành (chưa commit) |
-| Kế hoạch v1.2 (Giai đoạn 8–11) và hướng dẫn cho sinh viên | Hoàn thành (chưa commit) |
-| Gộp UCI + Zigong, so sánh cách xử lý LVEF bị thiếu | Hoàn thành (chưa commit) |
+| Codex review code; bản thảo paper IEEE (có Table V; giữ riêng tư, không đưa lên git) | Hoàn thành |
+| Kế hoạch v1.2 (Giai đoạn 8–11) và hướng dẫn cho sinh viên | Hoàn thành |
+| Gộp UCI + Zigong, so sánh cách xử lý LVEF bị thiếu | Hoàn thành |
+| Khảo sát bộ dữ liệu mới; kế hoạch v1.3 (Giai đoạn 12) | Hoàn thành; tải MIMIC-III đang vướng xác thực (mục 4.11) |
 | Giai đoạn 5 — Biểu đồ 300 DPI và `references.bib` | Chưa làm |
 | Giai đoạn 6 — Tuỳ chọn RobustScaler | Chưa làm |
 | Giai đoạn 7 — Phân tích sống còn (Cox, tuỳ chọn) | Chưa làm |
@@ -196,6 +197,26 @@
 - **Đánh giá:** CV phân tầng 5-fold, lặp 3 lần, phân tầng theo nguồn × kết cục. Mọi bước tiền xử lý chỉ học trên fold huấn luyện.
   - Báo cáo ROC-AUC trong từng nguồn dữ liệu, vì AUC trên dữ liệu gộp bị thổi phồng: hai nguồn chênh nhau 13 lần về tỉ lệ tử vong.
 - **Kiểm tra độ chính xác của việc điền LVEF:** che các giá trị LVEF đã đo ở Zigong rồi điền lại, so với giá trị thật.
+
+### 4.11. Khảo sát thêm bộ dữ liệu và tải MIMIC-III (2026-10-14)
+- **Kế hoạch v1.3, Giai đoạn 12:**
+  - ưu tiên 1: MIMIC-III Clinical Database v1.4 (DOI 10.13026/C2XW26);
+  - ưu tiên 2: TOPCAT và SCD-HeFT, xin qua BioLINCC.
+  - Danh sách bộ đã loại và lý do nằm trong kế hoạch.
+- **BioLINCC:** giảng viên hướng dẫn phải là PI và nộp đơn; sinh viên được ghi tên là người dùng. Hồ sơ gồm:
+  - văn bản IRB/EC miễn xét, kèm bản dịch tiếng Anh;
+  - RMDA do người có thẩm quyền của trường ký (không phải PI), hiệu lực 12 tháng.
+  - Chưa nộp đơn.
+- **MIMIC-III:** chỉ tải 8 bảng cần dùng, khoảng 1,5 GB nén trên tổng 6,2 GB. Không tải `CHARTEVENTS`.
+  - Nên lọc `NOTEEVENTS` (báo cáo siêu âm tim) và `LABEVENTS` trên BigQuery thay vì tải cả file.
+- **Trạng thái tải (2026-10-14): chưa tải được.**
+  - PhysioNet trả về 403 với aria2 và curl khi không giả User-Agent của wget. Cần thêm `-U "Wget/1.21.4"`.
+  - Khi đã giả User-Agent, đăng nhập bằng `.netrc` bị trả về **401**, dù cùng tài khoản đăng nhập web được. Đã kiểm tra: file đúng định dạng, curl và Python đều cho cùng kết quả.
+  - Việc cần làm tiếp:
+    - so username với địa chỉ trang profile `physionet.org/users/<username>/`;
+    - đợi tài khoản hết khóa tạm thời (nếu có);
+    - hỏi contact@physionet.org;
+    - hoặc tải bằng trình duyệt kèm trình quản lý tải, hoặc dùng BigQuery.
 
 ---
 
